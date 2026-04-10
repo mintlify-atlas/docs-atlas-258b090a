@@ -1,0 +1,227 @@
+---
+title: "API authentication: Basic Auth, API Key, and HMAC"
+description: "How to authenticate EspoCRM API requests using Basic Auth, API Key, or HMAC signature — with step-by-step instructions and curl examples for each method."
+keywords: ["espocrm authentication", "api key", "hmac", "basic auth", "auth token", "x-api-key"]
+---
+
+Every request to the EspoCRM API must be authenticated. The API supports three methods: Basic Auth for simple username/password credentials, API Key for static token-based access, and HMAC for cryptographically signed requests. Choose the method that fits your security requirements and integration type.
+
+<Warning>
+Never hard-code credentials or API keys in client-side code or public repositories. Store secrets in environment variables or a secrets manager.
+</Warning>
+
+## Authentication methods
+
+<Tabs>
+  <Tab title="Basic Auth">
+    Basic Auth encodes your EspoCRM username and password as a Base64 string and sends it in the `Authorization` header.
+
+    ### Encoding credentials
+
+    Concatenate your username and password with a colon, then Base64-encode the result:
+
+    ```bash
+    echo -n "admin:your-password" | base64
+    # YWRtaW46eW91ci1wYXNzd29yZA==
+    ```
+
+    ### Making a request
+
+    Pass the encoded string in the `Authorization` header with the `Basic` scheme:
+
+    ```bash
+    curl https://your-espocrm.com/api/v1/Contact \
+      -H "Authorization: Basic YWRtaW46eW91ci1wYXNzd29yZA=="
+    ```
+
+    <Note>
+    Basic Auth transmits credentials on every request. Use HTTPS at all times to prevent interception.
+    </Note>
+
+    ### Auth tokens (recommended over raw credentials)
+
+    Instead of sending your password on every request, you can exchange credentials for a session token. This token is valid until you destroy it.
+
+    **Step 1 — Obtain a token**
+
+    ```bash
+    curl -X GET https://your-espocrm.com/api/v1/App/user \
+      -H "Authorization: Basic YWRtaW46eW91ci1wYXNzd29yZA=="
+    ```
+
+    The response includes a `token` field:
+
+    ```json
+    {
+      "id": "64a1b2c3d4e5f6a7b8c9d0e1",
+      "name": "Admin",
+      "userName": "admin",
+      "token": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6"
+    }
+    ```
+
+    **Step 2 — Use the token**
+
+    Use the token as the password in subsequent Basic Auth headers. Pass your username alongside it:
+
+    ```bash
+    curl https://your-espocrm.com/api/v1/Contact \
+      -H "Authorization: Basic $(echo -n 'admin:a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6' | base64)"
+    ```
+
+    **Step 3 — Destroy the token**
+
+    When you're done, invalidate the token:
+
+    ```bash
+    curl -X POST https://your-espocrm.com/api/v1/App/destroyAuthToken \
+      -H "Authorization: Basic $(echo -n 'admin:a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6' | base64)" \
+      -H "Content-Type: application/json" \
+      -d '{"token": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6"}'
+    ```
+  </Tab>
+
+  <Tab title="API Key">
+    API Key authentication sends a static key in a custom header. This is the simplest method for server-to-server integrations where you control the environment.
+
+    ### Generating an API key
+
+    <Steps>
+      <Step title="Open the user record">
+        Go to **Admin → Users** and open the user you want to assign an API key to. For dedicated integrations, create a separate API user.
+      </Step>
+      <Step title="Generate the key">
+        Scroll to the **API Key** section and click **Generate**. Copy the key — it is only shown once.
+      </Step>
+      <Step title="Save the user">
+        Click **Save**. The key is now active.
+      </Step>
+    </Steps>
+
+    ### Making a request
+
+    Send the key in the `X-Api-Key` header:
+
+    ```bash
+    curl https://your-espocrm.com/api/v1/Contact \
+      -H "X-Api-Key: your-api-key-here"
+    ```
+
+    No `Authorization` header is needed when using an API key.
+
+    ### Creating a contact with API Key auth
+
+    ```bash
+    curl -X POST https://your-espocrm.com/api/v1/Contact \
+      -H "X-Api-Key: your-api-key-here" \
+      -H "Content-Type: application/json" \
+      -d '{"firstName": "Alice", "lastName": "Smith"}'
+    ```
+
+    <Note>
+    API keys do not expire automatically. Rotate them periodically and revoke them immediately if compromised. You can regenerate a key from the user record at any time — the old key is invalidated immediately.
+    </Note>
+  </Tab>
+
+  <Tab title="HMAC">
+    HMAC authentication signs each request with a secret key using the HMAC-SHA256 algorithm. Because the signature covers the HTTP method and request path, it provides stronger protection against replay attacks and credential theft.
+
+    ### How HMAC auth works
+
+    Each request carries a `X-Hmac-Authorization` header containing a Base64-encoded string in the format `apiKey:signature`. The signature is computed as:
+
+    ```
+    HMAC-SHA256(secretKey, "{METHOD} {resourcePath}")
+    ```
+
+    Where:
+    - `secretKey` is the secret generated for the API user
+    - `{METHOD}` is the uppercase HTTP method (e.g. `GET`, `POST`)
+    - `{resourcePath}` is the request path relative to the API root (e.g. `/api/v1/Contact`)
+
+    ### Generating an API key and secret
+
+    <Steps>
+      <Step title="Open the user record">
+        Go to **Admin → Users** and open the target user (or create a dedicated API user).
+      </Step>
+      <Step title="Generate the HMAC key pair">
+        In the **API Key** section, choose the **HMAC** option and click **Generate**. Copy both the **API Key** and the **Secret Key** — the secret is only shown once.
+      </Step>
+      <Step title="Save the user">
+        Click **Save** to activate the key pair.
+      </Step>
+    </Steps>
+
+    ### Constructing the signature
+
+    ```php
+    $method = 'GET';
+    $resourcePath = '/api/v1/Contact';
+    $secretKey = 'your-secret-key';
+    $apiKey = 'your-api-key';
+
+    $stringToSign = $method . ' ' . $resourcePath;
+    $signature = hash_hmac('sha256', $stringToSign, $secretKey);
+    $headerValue = base64_encode($apiKey . ':' . $signature);
+    ```
+
+    ### Making a request
+
+    ```bash
+    # Build the signature
+    API_KEY="your-api-key"
+    SECRET_KEY="your-secret-key"
+    METHOD="GET"
+    RESOURCE="/api/v1/Contact"
+
+    SIGNATURE=$(echo -n "${METHOD} ${RESOURCE}" | openssl dgst -sha256 -hmac "${SECRET_KEY}" | awk '{print $2}')
+    HEADER_VALUE=$(echo -n "${API_KEY}:${SIGNATURE}" | base64)
+
+    curl "https://your-espocrm.com${RESOURCE}" \
+      -H "X-Hmac-Authorization: ${HEADER_VALUE}"
+    ```
+
+    <Note>
+    The signature must use the resource path as seen by the server, beginning with `/api/v1/`. Include query parameters in the path only if your EspoCRM version requires it — check the Hmac.php login source for the exact string format used.
+    </Note>
+  </Tab>
+</Tabs>
+
+## Error responses
+
+When authentication fails, the API returns one of the following:
+
+**401 Unauthorized** — credentials are missing or invalid:
+
+```json
+{
+  "code": 401,
+  "message": "Unauthorized"
+}
+```
+
+**403 Forbidden** — credentials are valid but the user lacks permission for the requested resource:
+
+```json
+{
+  "code": 403,
+  "message": "Forbidden"
+}
+```
+
+A `403` means your credentials work but the user's role does not grant access to the requested entity or action. Review the user's assigned roles under **Admin → Roles**.
+
+## Choosing an authentication method
+
+<CardGroup cols={3}>
+  <Card title="Basic Auth" icon="user">
+    Best for: quick scripts, development, and testing. Use auth tokens (not raw passwords) for any long-running integration.
+  </Card>
+  <Card title="API Key" icon="key">
+    Best for: server-to-server integrations where simplicity matters. No per-request computation required.
+  </Card>
+  <Card title="HMAC" icon="shield-check">
+    Best for: security-sensitive integrations. Each request is individually signed, preventing replay attacks.
+  </Card>
+</CardGroup>

@@ -1,0 +1,138 @@
+---
+title: 'EspoCRM architecture overview for developers'
+description: 'Learn how EspoCRM is structured: the PHP backend, Backbone.js SPA frontend, REST API layer, ORM, metadata system, and the module/custom directory layout.'
+keywords: ['espocrm', 'architecture', 'backend', 'frontend', 'metadata', 'module system', 'directory structure', 'orm', 'php']
+---
+
+EspoCRM is a full-stack web application made up of a Backbone.js-based single-page frontend and a PHP 8.3+ backend that exposes a REST API. Understanding how those layers fit together—and how EspoCRM decides where to load code from—is essential before you start extending it.
+
+## Frontend
+
+The frontend is a single-page application built on [Backbone.js](https://backbonejs.org/). Views, collections, and models follow Backbone conventions and are loaded on demand by a custom AMD-style module system. The client source lives in `client/src/` and is organised into modules: `views/`, `collections/`, `models/`, and `handlers/`, among others.
+
+Client-side behaviour for an entity (which fields to show, which views to use, which actions are available) is almost entirely data-driven. When the browser boots, it fetches the compiled metadata from the server and uses those JSON definitions to decide how to render every entity type without hard-coded view classes.
+
+## Backend
+
+The PHP backend follows a **service-container** architecture built on top of the [Slim framework](https://www.slimframework.com/) for HTTP routing and dispatch. PSR-4 autoloading maps the `Espo\` namespace root to `application/Espo/`.
+
+Key backend layers:
+
+<CardGroup cols={2}>
+  <Card title="API layer" icon="network-wired">
+    Slim routes requests to controller action handlers in `Espo\Core\Api\`. Each handler receives a typed `Request` and produces a `Response`.
+  </Card>
+  <Card title="Record services" icon="gears">
+    `Espo\Core\Record\Service` is the base class for CRUD logic. Entity-specific services extend it and override behaviour.
+  </Card>
+  <Card title="ORM" icon="database">
+    A custom ORM (`Espo\ORM\`) wraps PDO and supports MySQL, MariaDB, and PostgreSQL. Repositories handle persistence; entities are plain value objects.
+  </Card>
+  <Card title="DI container" icon="boxes-stacked">
+    `Espo\Core\Container` is a lazy-loading service container. Most classes are instantiated via `Espo\Core\InjectableFactory` using constructor type-hints.
+  </Card>
+</CardGroup>
+
+The entry point for every HTTP request is `public/index.php`, which creates an `Espo\Core\Application` instance, builds the container, and runs a `Runner`:
+
+```php
+// application/Espo/Core/Application.php
+class Application
+{
+    protected Container $container;
+
+    public function __construct(?ApplicationParams $params = null)
+    {
+        $this->initContainer($params);
+        $this->initAutoloads();
+        $this->initPreloads();
+    }
+
+    public function run(string $className, ?RunnerParams $params = null): void
+    {
+        $runnerRunner = $this->getInjectableFactory()->create(RunnerRunner::class);
+        $runnerRunner->run($className, $params);
+    }
+}
+```
+
+## Directory structure
+
+```text
+espocrm/
+├── application/
+│   └── Espo/               # Core application code (PSR-4: Espo\)
+│       ├── Core/           # Framework: container, DI, hooks, API, ORM utilities
+│       ├── Entities/       # Built-in entity classes
+│       ├── Hooks/          # Built-in hook classes
+│       ├── Controllers/    # Built-in API controllers
+│       ├── Services/       # Built-in services
+│       └── Tools/          # Feature-specific tools (stream, reports, etc.)
+├── custom/
+│   └── Espo/
+│       ├── Custom/         # Customizations (Espo\Custom\)
+│       │   ├── Binding.php
+│       │   ├── Entities/
+│       │   ├── Hooks/
+│       │   └── Resources/
+│       │       └── metadata/
+│       └── Modules/        # Extension modules (Espo\Modules\{ModuleName}\)
+│           └── MyModule/
+│               ├── Binding.php
+│               ├── Entities/
+│               ├── Hooks/
+│               └── Resources/
+│                   └── metadata/
+├── client/
+│   └── src/                # Frontend JavaScript source
+├── public/                 # Web root (index.php, assets)
+└── data/                   # Runtime data, cache, uploads (not in VCS)
+```
+
+<Note>
+  Files under `custom/` take precedence over `application/Espo/` when the same class name exists in both locations. This lets you override core behaviour without patching core files.
+</Note>
+
+## Metadata system
+
+Metadata is the backbone of EspoCRM's data-driven design. JSON files stored under `Resources/metadata/` define entity schemas, field types, client-side view mappings, ACL defaults, and more. At runtime, `Espo\Core\Utils\Metadata` merges metadata from all active locations in order:
+
+1. `application/Espo/Resources/metadata/` (core)
+2. `custom/Espo/Modules/{ModuleName}/Resources/metadata/` (modules, per load order)
+3. `custom/Espo/Custom/Resources/metadata/` (customizations — highest priority)
+
+Metadata is accessed through the container service and cached for performance:
+
+```php
+use Espo\Core\Utils\Metadata;
+
+class MyService
+{
+    public function __construct(private Metadata $metadata) {}
+
+    public function getContactFields(): mixed
+    {
+        // Returns the field definitions for the Contact entity type.
+        return $this->metadata->get(['entityDefs', 'Contact', 'fields']);
+    }
+}
+```
+
+The top-level metadata categories most relevant to extension developers are:
+
+| Category | Purpose |
+|---|---|
+| `entityDefs` | Field, link, and index definitions for each entity type |
+| `clientDefs` | Frontend view classes, panels, actions, and dynamic logic |
+| `scopes` | Entity-level settings: whether it has a stream, is importable, etc. |
+| `fields` | Field type definitions (validators, converters, view mappings) |
+| `app` | Application-level settings: container services, hook ordering, etc. |
+
+## Module system
+
+EspoCRM distinguishes between two kinds of extension points:
+
+- **`custom/Espo/Custom/`** — ad-hoc customizations that apply to a single installation. Use this for small overrides and one-off hooks.
+- **`custom/Espo/Modules/{ModuleName}/`** — self-contained modules that can be packaged as installable extensions. Each module has its own namespace (`Espo\Modules\{ModuleName}\`) and its own `Resources/metadata/` tree.
+
+The framework scans for modules by reading the module list from metadata and loads resources in the declared order. Module load order can be controlled via `Resources/metadata/app/module.json`.

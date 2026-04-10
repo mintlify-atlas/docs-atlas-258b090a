@@ -1,0 +1,326 @@
+---
+title: "Field types available in EspoCRM"
+description: "Complete reference for every field type in EspoCRM: configuration options, storage behavior, read-only types, and which types support filtering and search."
+keywords: ["field types", "custom fields", "varchar", "enum", "currency", "link", "EspoCRM fields"]
+---
+
+EspoCRM ships with over 40 field types, each with its own storage format, validation rules, and UI behavior. You add fields to entities through **Admin** → **Entity Manager** → select an entity → **Fields** → **Add Field**. The type you choose determines which options are shown in the field editor. This page describes every available type and its key configuration parameters.
+
+## Common parameters
+
+Most field types share a core set of parameters:
+
+| Parameter | Description |
+|-----------|-------------|
+| `required` | Makes the field mandatory when saving a record. |
+| `default` | The pre-filled value when a new record is created. |
+| `readOnly` | Prevents users from editing the field after any save. |
+| `readOnlyAfterCreate` | Allows editing on create but locks the field on subsequent saves. |
+| `audited` | Logs every value change to the record's stream. |
+
+---
+
+## Text and string types
+
+<AccordionGroup>
+  <Accordion title="varchar — Single-line text">
+    Stores a short string, backed by a `VARCHAR` database column. Use for names, codes, or any free-form single-line value.
+
+    | Option | Description |
+    |--------|-------------|
+    | `maxLength` | Maximum character count (default 100, max 65,535). |
+    | `options` | Predefined suggestions shown as a dropdown on the edit form (user can still type custom values). |
+    | `pattern` | A regex pattern that the value must match. |
+    | `copyToClipboard` | Shows a copy icon next to the field in detail view. |
+  </Accordion>
+  <Accordion title="text — Multi-line text">
+    Stores a longer string in a `TEXT` column. Renders as a resizable textarea.
+
+    | Option | Description |
+    |--------|-------------|
+    | `maxLength` | Optional character limit. |
+    | `rows` | Fixed number of textarea rows; omit for auto-height. |
+    | `seeMoreDisabled` | When false (default), long values are truncated with a "See more" link. |
+    | `cutHeight` | Pixel height at which truncation triggers (default 200). |
+  </Accordion>
+  <Accordion title="wysiwyg — Rich text editor">
+    A WYSIWYG editor that stores HTML in a `TEXT` column. Suitable for formatted notes, descriptions, or email body templates.
+
+    | Option | Description |
+    |--------|-------------|
+    | `height` | Fixed editor height in pixels. |
+    | `minHeight` | Minimum editor height in pixels. |
+    | `useIframe` | Renders the output in an iframe in detail view to isolate CSS. |
+    | `maxLength` | Optional character limit on the raw HTML. |
+  </Accordion>
+  <Accordion title="url — Web address">
+    Stores a URL string as a `VARCHAR`. Renders as a clickable link in detail view.
+
+    | Option | Description |
+    |--------|-------------|
+    | `maxLength` | Maximum character count. |
+    | `strip` | Strips common tracking parameters from the URL on save. |
+    | `protocolRequired` | Requires the value to start with `http://` or `https://`. |
+    | `copyToClipboard` | Shows a copy icon next to the field. |
+  </Accordion>
+  <Accordion title="password — Password field">
+    Renders as a password input. The value is hashed before storage and never returned by the API. Used for credential fields.
+  </Accordion>
+</AccordionGroup>
+
+## Numeric types
+
+<AccordionGroup>
+  <Accordion title="int — Integer">
+    Stores a whole number in an `INT` column.
+
+    | Option | Description |
+    |--------|-------------|
+    | `min` | Minimum allowed value. |
+    | `max` | Maximum allowed value. |
+    | `disableFormatting` | Suppresses thousand-separator formatting in the UI. |
+  </Accordion>
+  <Accordion title="float — Decimal number">
+    Stores a floating-point number.
+
+    | Option | Description |
+    |--------|-------------|
+    | `min` | Minimum allowed value. |
+    | `max` | Maximum allowed value. |
+    | `decimalPlaces` | Number of decimal places shown in the UI. |
+  </Accordion>
+  <Accordion title="currency — Monetary amount">
+    Stores an amount and a currency code. Creates two database columns: one for the amount and one for the currency (e.g. `amount` and `amountCurrency`). A third `amountConverted` column stores the value converted to the system default currency.
+
+    | Option | Description |
+    |--------|-------------|
+    | `min` / `max` | Allowed value range. |
+    | `onlyDefaultCurrency` | Locks the currency selector to the system default. |
+    | `conversionDisabled` | Skips writing the converted column. |
+    | `decimal` | Uses `DECIMAL` storage instead of `FLOAT` for exact precision. |
+  </Accordion>
+  <Accordion title="decimal — High-precision decimal">
+    Stores a precise decimal value using a `DECIMAL` database column. Use when floating-point rounding is not acceptable.
+  </Accordion>
+  <Accordion title="autoincrement — Auto-incrementing integer">
+    A **read-only** field that is set automatically by the database. It generates a unique, sequential integer for each new record. No configuration options are exposed in the field editor.
+
+    This type is always read-only and cannot be set manually or via the API.
+  </Accordion>
+  <Accordion title="number — Formatted number with prefix">
+    Stores a formatted number (like an invoice number). Typically combines a prefix, a padding width, and the autoincrement value. Configuration is managed via a hook class.
+  </Accordion>
+</AccordionGroup>
+
+## Selection types
+
+<AccordionGroup>
+  <Accordion title="enum — Single-select dropdown">
+    Lets the user pick one value from a predefined list. Stored as `VARCHAR`.
+
+    | Option | Description |
+    |--------|-------------|
+    | `options` | The list of allowed values. |
+    | `default` | The value selected when creating a new record. |
+    | `isSorted` | Sorts the option list alphabetically. |
+    | `displayAsLabel` | Renders the value as a colored label badge. |
+    | `optionsReference` | Inherits the option list from another field. |
+  </Accordion>
+  <Accordion title="multiEnum — Multi-select dropdown">
+    Lets the user pick multiple values from a predefined list. Stored as a JSON array.
+
+    | Option | Description |
+    |--------|-------------|
+    | `options` | The allowed values. |
+    | `maxCount` | Maximum number of items the user can select. |
+    | `allowCustomOptions` | Allows the user to type values not in the predefined list. |
+    | `displayAsLabel` | Renders each selected value as a badge. |
+    | `displayAsList` | Renders values stacked vertically instead of inline. |
+  </Accordion>
+  <Accordion title="array — Free-form list">
+    Stores a JSON array of strings. Similar to `multiEnum` but the predefined options list is optional, and users can type arbitrary values.
+
+    | Option | Description |
+    |--------|-------------|
+    | `options` | Optional suggested values. |
+    | `maxCount` | Maximum number of items. |
+    | `itemsEditable` | Allows editing individual items in place. |
+    | `pattern` | Regex each item must match. |
+  </Accordion>
+  <Accordion title="checklist — Checkbox list">
+    Displays a list of checkboxes from a predefined option set. Each item is either checked or unchecked. Stored as a JSON array of checked values. **Options are required** for this type.
+
+    | Option | Description |
+    |--------|-------------|
+    | `options` | The list of items (required). |
+    | `isSorted` | Sorts items alphabetically. |
+    | `maxCount` | Maximum number of items that can be checked. |
+  </Accordion>
+</AccordionGroup>
+
+## Date and time types
+
+<AccordionGroup>
+  <Accordion title="date — Calendar date">
+    Stores a date without time (`DATE` column). The default can be set to today, or to a date shifted by days, weeks, or months from today.
+
+    | Option | Description |
+    |--------|-------------|
+    | `after` / `before` | Cross-field validation requiring this date to be after or before another date field. |
+    | `useNumericFormat` | Displays the date as numbers (e.g. `2024-06-15`) instead of the locale-formatted string. |
+  </Accordion>
+  <Accordion title="datetime — Date and time">
+    Stores a date and time (`DATETIME` column), stored in UTC. The UI displays it in the user's time zone.
+
+    | Option | Description |
+    |--------|-------------|
+    | `minuteStep` | Snap interval for the time picker (e.g. 15 for quarter-hour steps). |
+    | `after` / `before` | Cross-field validation. |
+    | `useNumericFormat` | Displays date/time in numeric ISO format. |
+  </Accordion>
+  <Accordion title="datetimeOptional — Optional date or datetime">
+    Like `datetime` but allows the user to provide only a date without a time component. Useful for deadlines where the exact time is not always known.
+  </Accordion>
+  <Accordion title="duration — Time duration">
+    Stores a numeric duration (in seconds or minutes) and renders it as a human-readable interval. Often paired with start/end datetime fields.
+  </Accordion>
+</AccordionGroup>
+
+## Relationship types
+
+These types represent links between entities. They are created automatically when you define a relationship in **Entity Manager**, but can also be added as standalone fields where applicable.
+
+<AccordionGroup>
+  <Accordion title="link — Belongs-to relationship">
+    Links the current record to a single record of another entity (many-to-one). Stores the foreign record's ID in a `{name}Id` column and its name in a virtual `{name}Name` attribute.
+
+    | Option | Description |
+    |--------|-------------|
+    | `required` | Makes the link mandatory. |
+    | `default` | Pre-select a specific record when creating. |
+    | `createButton` | Shows an inline create button next to the link field. |
+    | `autocompleteOnEmpty` | Triggers the search autocomplete when the field is focused and empty. |
+
+    This type is **not directly creatable** from the Field Manager unless a corresponding relationship is defined first.
+  </Accordion>
+  <Accordion title="linkMultiple — Has-many relationship">
+    Links the current record to many records of another entity (many-to-many or one-to-many). Stores IDs in a virtual `{name}Ids` array and names in `{name}Names`.
+
+    | Option | Description |
+    |--------|-------------|
+    | `maxCount` | Limits how many linked records can be selected. |
+    | `createButton` | Adds an inline create button. |
+    | `autocompleteOnEmpty` | Opens the search on focus when empty. |
+  </Accordion>
+  <Accordion title="linkOne — Has-one relationship">
+    Links the current record to at most one record of another entity (one-to-one). The link is maintained on the other entity's side.
+  </Accordion>
+  <Accordion title="linkParent — Polymorphic parent link">
+    Links a record to a parent that can be any one of several entity types. Stores the parent entity type in `{name}Type` and the parent ID in `{name}Id`. Used by Activities (calls, meetings, tasks) to relate to Contacts, Accounts, Leads, and other types simultaneously.
+  </Accordion>
+  <Accordion title="foreign — Fetched attribute from a related entity">
+    A **read-only**, computed field that displays a specific attribute from a related `link` field. For example, you can pull the Account's phone number onto a Contact record without a join in the UI.
+  </Accordion>
+</AccordionGroup>
+
+## File and media types
+
+<AccordionGroup>
+  <Accordion title="image — Single image upload">
+    Stores one image attachment (linked to the Attachment entity). Shows a thumbnail in detail view.
+
+    | Option | Description |
+    |--------|-------------|
+    | `previewSize` | Thumbnail size in detail view: `x-small`, `small`, `medium`, or `large`. |
+    | `listPreviewSize` | Thumbnail size in list view. |
+    | `maxFileSize` | Maximum upload size in MB. |
+  </Accordion>
+  <Accordion title="file — Single file upload">
+    Stores one file attachment. Renders a download link in detail view.
+
+    | Option | Description |
+    |--------|-------------|
+    | `maxFileSize` | Maximum upload size in MB. |
+    | `accept` | Restricts accepted MIME types or extensions. |
+  </Accordion>
+  <Accordion title="attachmentMultiple — Multiple file uploads">
+    Stores multiple file attachments. Renders a list of download links and optional previews.
+
+    | Option | Description |
+    |--------|-------------|
+    | `maxFileSize` | Maximum size per file in MB. |
+    | `accept` | Restricts accepted MIME types or file extensions. |
+    | `maxCount` | Limits the total number of attached files. |
+    | `previewSize` | Thumbnail size for image previews in the list. |
+  </Accordion>
+</AccordionGroup>
+
+## Contact information types
+
+<AccordionGroup>
+  <Accordion title="email — Email address">
+    Stores one or more email addresses with metadata (opted out, invalid). The primary address is used for sending. Renders with opt-out and compose buttons.
+
+    The field value is stored in a normalized structure via a separate email address table, not as a plain `VARCHAR`.
+  </Accordion>
+  <Accordion title="phone — Phone number">
+    Stores one or more phone numbers, each with a type label (Mobile, Office, Home, etc.). Configurable type list and default type.
+
+    | Option | Description |
+    |--------|-------------|
+    | `typeList` | The list of phone number type labels available in the dropdown. |
+    | `defaultType` | The type pre-selected for new entries. |
+  </Accordion>
+  <Accordion title="address — Postal address">
+    A composite field that stores street, city, state, country, and postal code as separate sub-fields. Optionally shows a Google Maps embed via the `viewMap` option.
+  </Accordion>
+  <Accordion title="personName — Full name">
+    A composite field for person names with salutation, first name, middle name, and last name. Used by the Person entity template. The combined display name is formatted according to the system locale setting.
+  </Accordion>
+</AccordionGroup>
+
+## Specialized types
+
+<AccordionGroup>
+  <Accordion title="bool — Checkbox (true/false)">
+    A boolean field stored as a `TINYINT(1) NOT NULL` column. Renders as a checkbox. The default value must be `true` or `false`.
+  </Accordion>
+  <Accordion title="jsonObject — JSON object">
+    Stores an arbitrary JSON object. There is no structured UI for editing — it is typically managed programmatically via formula or the API.
+  </Accordion>
+  <Accordion title="jsonArray — JSON array">
+    Stores an arbitrary JSON array. Like `jsonObject`, it is mostly managed programmatically.
+  </Accordion>
+  <Accordion title="barcode — Barcode display">
+    Stores a string value and renders it as a barcode or QR code image in detail view. The string is stored as `VARCHAR`.
+
+    | Option | Description |
+    |--------|-------------|
+    | `codeType` | The barcode format: `CODE128`, `EAN13`, `QRcode`, `UPC`, `ITF14`, and others. |
+    | `lastChar` | An optional check character appended to the value. |
+  </Accordion>
+  <Accordion title="colorpicker — Hex color value">
+    Stores a hex color string and shows a color picker UI. Useful for categorizing records by color.
+  </Accordion>
+  <Accordion title="map — Embedded map">
+    A **read-only** field that shows an embedded map based on an address field. Not independently creatable — it is generated as part of the `address` composite field.
+  </Accordion>
+  <Accordion title="range types — Numeric ranges">
+    `rangeInt`, `rangeFloat`, and `rangeCurrency` each store a lower and upper bound as a pair of values. Useful for price ranges, size ranges, or duration estimates.
+  </Accordion>
+  <Accordion title="urlMultiple — Multiple URLs">
+    Stores multiple URL strings, similar to how `attachmentMultiple` handles files. Each URL is displayed as a clickable link.
+  </Accordion>
+</AccordionGroup>
+
+## Read-only and computed types
+
+The following types are always read-only and cannot be edited by users or set via the standard form:
+
+| Type | How the value is set |
+|------|----------------------|
+| `autoincrement` | Set by the database automatically on insert. |
+| `number` | Composed from a prefix and an autoincrement value via a hook. |
+| `foreign` | Fetched at read time from a related record's attribute. |
+| `currencyConverted` | Calculated from the currency amount and the conversion rate table. |
+| `map` | Rendered at view time from an address field's sub-fields. |

@@ -1,0 +1,295 @@
+---
+title: "Search, filter, and sort records via the EspoCRM API"
+description: "Learn how to use the where parameter, condition types, orderBy, pagination, select, textFilter, and bool filters to query records in the EspoCRM REST API."
+keywords: ["espocrm api", "search", "filter", "where clause", "sort", "pagination", "textFilter", "bool filter"]
+---
+
+Every list endpoint in EspoCRM (`GET /api/v1/{EntityType}`) accepts a rich set of query parameters that let you filter, sort, and page through records. The same parameters work on related-record endpoints (`GET /api/v1/{EntityType}/{id}/{link}`). You pass filter conditions as a JSON array in the `where` query parameter; the server applies them and returns only the matching records.
+
+## Pagination
+
+<ParamField query="offset" type="number" default="0">
+  Number of records to skip before returning results. Use with `maxSize` to page through large result sets.
+</ParamField>
+
+<ParamField query="maxSize" type="number" default="20">
+  Maximum number of records to return. The server-side maximum is typically 200 and is configurable in **Admin → Settings**.
+</ParamField>
+
+```bash
+# Page 2 of 20 records per page
+curl "https://your-espocrm.com/api/v1/Contact?offset=20&maxSize=20" \
+  -H "Authorization: Basic <base64-credentials>"
+```
+
+---
+
+## Sorting
+
+<ParamField query="orderBy" type="string">
+  The field to sort by. Use any top-level field name on the entity, e.g. `lastName`, `createdAt`, `amount`, `closeDate`.
+</ParamField>
+
+<ParamField query="order" type="string">
+  Sort direction: `ASC` (ascending) or `DESC` (descending). Case-insensitive.
+</ParamField>
+
+```bash
+curl "https://your-espocrm.com/api/v1/Opportunity?orderBy=amount&order=DESC" \
+  -H "Authorization: Basic <base64-credentials>"
+```
+
+---
+
+## Field selection
+
+<ParamField query="select" type="string">
+  Comma-separated list of field names to include in the response. Omitting this parameter returns all fields. Using `select` reduces payload size and can improve performance on large result sets.
+</ParamField>
+
+```bash
+# Return only id, firstName, lastName, and emailAddress for each Contact
+curl "https://your-espocrm.com/api/v1/Contact?select=id,firstName,lastName,emailAddress" \
+  -H "Authorization: Basic <base64-credentials>"
+```
+
+---
+
+## Full-text search
+
+<ParamField query="textFilter" type="string">
+  A plain-text search string. EspoCRM searches across the entity's configured full-text search fields (typically `name`, `description`, and other text fields configured in metadata). Equivalent to the search box in the list view.
+</ParamField>
+
+```bash
+curl "https://your-espocrm.com/api/v1/Contact?textFilter=Alice" \
+  -H "Authorization: Basic <base64-credentials>"
+```
+
+---
+
+## The `where` parameter
+
+The `where` parameter accepts a JSON array of condition objects. Pass it as a URL-encoded string in the query string. Each condition object has at least a `type` and an `attribute` (the field name), and most types also require a `value`.
+
+<ParamField query="where" type="string">
+  URL-encoded JSON array of condition objects. Each object specifies a `type`, an `attribute` (field name), and optionally a `value`. Conditions in the array are ANDed together by default.
+</ParamField>
+
+### Condition structure
+
+```json
+{
+  "type": "<condition-type>",
+  "attribute": "<field-name>",
+  "value": "<value-or-array>"
+}
+```
+
+### Condition types
+
+| Type | Description | Value |
+|---|---|---|
+| `equals` | Field equals value | scalar |
+| `notEquals` | Field does not equal value | scalar |
+| `contains` | Field contains substring (case-insensitive) | string |
+| `notContains` | Field does not contain substring | string |
+| `startsWith` | Field starts with string | string |
+| `endsWith` | Field ends with string | string |
+| `greaterThan` | Field is greater than value | number or date string |
+| `lessThan` | Field is less than value | number or date string |
+| `greaterThanOrEquals` | Field ≥ value | number or date string |
+| `lessThanOrEquals` | Field ≤ value | number or date string |
+| `isNull` | Field is null/empty | — (no value) |
+| `isNotNull` | Field is not null/empty | — (no value) |
+| `isTrue` | Boolean field is true | — (no value) |
+| `isFalse` | Boolean field is false | — (no value) |
+| `in` | Field value is in list | array of scalars |
+| `notIn` | Field value is not in list | array of scalars |
+| `between` | Field is between two values (inclusive) | array of two values `[min, max]` |
+| `arrayAnyOf` | Multi-value field contains any of the listed values | array of scalars |
+| `arrayNoneOf` | Multi-value field contains none of the listed values | array of scalars |
+| `linkedWith` | Related record ID matches any of the listed IDs | array of ID strings |
+| `notLinkedWith` | Related record ID does not match any of the listed IDs | array of ID strings |
+| `today` | Date field is today | — (no value) |
+| `past` | Date field is in the past | — (no value) |
+| `future` | Date field is in the future | — (no value) |
+| `lastXDays` | Date field is within the last N days | integer (number of days) |
+| `nextXDays` | Date field is within the next N days | integer (number of days) |
+
+### Examples
+
+**Filter Contacts by last name:**
+
+```json
+[
+  {
+    "type": "equals",
+    "attribute": "lastName",
+    "value": "Smith"
+  }
+]
+```
+
+**Filter Opportunities by stage and amount:**
+
+```json
+[
+  {
+    "type": "in",
+    "attribute": "stage",
+    "value": ["Needs Analysis", "Proposal/Price Quote", "Negotiation/Review"]
+  },
+  {
+    "type": "greaterThanOrEquals",
+    "attribute": "amount",
+    "value": 10000
+  }
+]
+```
+
+**Filter Leads created in the last 30 days:**
+
+```json
+[
+  {
+    "type": "lastXDays",
+    "attribute": "createdAt",
+    "value": 30
+  }
+]
+```
+
+**Filter Contacts where phone number is not null and account matches a specific ID:**
+
+```json
+[
+  {
+    "type": "isNotNull",
+    "attribute": "phoneNumber"
+  },
+  {
+    "type": "equals",
+    "attribute": "accountId",
+    "value": "75b2c3d4e5f6a7b8c9d0e1f2"
+  }
+]
+```
+
+### Passing `where` as a query parameter
+
+URL-encode the JSON array and pass it as the `where` query parameter:
+
+```bash
+# Filter Opportunities with amount >= 10000 in specific stages
+WHERE='[{"type":"in","attribute":"stage","value":["Needs Analysis","Proposal/Price Quote"]},{"type":"greaterThanOrEquals","attribute":"amount","value":10000}]'
+
+curl "https://your-espocrm.com/api/v1/Opportunity?where=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$WHERE")&orderBy=amount&order=DESC" \
+  -H "Authorization: Basic <base64-credentials>"
+```
+
+<Tip>
+  In practice, most HTTP client libraries handle URL encoding for you. Pass the `where` value as a query parameter and let the library encode it — for example, `params={"where": json.dumps(conditions)}` in Python's `requests`, or `params: { where: JSON.stringify(conditions) }` in JavaScript's `axios`.
+</Tip>
+
+---
+
+## Nested logic with `and` and `or`
+
+You can nest conditions using `and` and `or` group types. The top-level array is an implicit AND, but you can create OR groups inside it:
+
+```json
+[
+  {
+    "type": "or",
+    "value": [
+      {
+        "type": "equals",
+        "attribute": "stage",
+        "value": "Closed Won"
+      },
+      {
+        "type": "equals",
+        "attribute": "stage",
+        "value": "Closed Lost"
+      }
+    ]
+  },
+  {
+    "type": "greaterThan",
+    "attribute": "closeDate",
+    "value": "2026-01-01"
+  }
+]
+```
+
+This returns Opportunities that are either Closed Won or Closed Lost, and whose close date is after 2026-01-01.
+
+---
+
+## Primary filter (named presets)
+
+<ParamField query="primaryFilter" type="string">
+  A named filter preset defined in the entity's metadata. Primary filters are configured server-side and represent common, reusable filter sets. For example, the Lead entity has presets such as `onlyMy` (assigned to the current user) and `converted`.
+</ParamField>
+
+```bash
+# List only Leads assigned to the current user
+curl "https://your-espocrm.com/api/v1/Lead?primaryFilter=onlyMy" \
+  -H "Authorization: Basic <base64-credentials>"
+```
+
+---
+
+## Bool filters
+
+<ParamField query="boolFilterList" type="string">
+  URL-encoded JSON array of named boolean filter identifiers. Bool filters are binary toggles defined in entity metadata. Multiple filters are combined with AND. Common examples include `onlyMy`, `followed`, `withEmailAddress`.
+</ParamField>
+
+```bash
+# Contacts that are followed by the current user AND have an email address
+BOOL='["followed","withEmailAddress"]'
+
+curl "https://your-espocrm.com/api/v1/Contact?boolFilterList=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$BOOL")" \
+  -H "Authorization: Basic <base64-credentials>"
+```
+
+---
+
+## Complete example
+
+The following request fetches the top 10 open Opportunities linked to a specific account, sorted by amount descending, and returns only selected fields:
+
+```bash
+WHERE='[{"type":"equals","attribute":"accountId","value":"75b2c3d4e5f6a7b8c9d0e1f2"},{"type":"notIn","attribute":"stage","value":["Closed Won","Closed Lost"]}]'
+
+curl "https://your-espocrm.com/api/v1/Opportunity" \
+  -G \
+  --data-urlencode "where=$WHERE" \
+  --data-urlencode "select=id,name,amount,stage,closeDate" \
+  -d "orderBy=amount&order=DESC&maxSize=10" \
+  -H "Authorization: Basic <base64-credentials>"
+```
+
+```json
+{
+  "total": 5,
+  "list": [
+    {
+      "id": "88c3d4e5f6a7b8c9d0e1f2a3",
+      "name": "Enterprise License Renewal",
+      "amount": 75000,
+      "stage": "Proposal/Price Quote",
+      "closeDate": "2026-06-30"
+    },
+    {
+      "id": "aab5c6d7e8f9a0b1c2d3e4f5",
+      "name": "Cloud Expansion Q3",
+      "amount": 42000,
+      "stage": "Needs Analysis",
+      "closeDate": "2026-09-30"
+    }
+  ]
+}
+```

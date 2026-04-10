@@ -1,0 +1,170 @@
+---
+title: "Managing contacts, leads, and accounts in EspoCRM"
+description: "A guide to EspoCRM's core CRM entities — Accounts, Contacts, Leads, Opportunities, Cases, Meetings, Calls, and Tasks — and how they relate to each other."
+keywords: ["accounts", "contacts", "leads", "opportunities", "cases", "meetings", "calls", "tasks", "CRM entities", "lead conversion"]
+---
+
+EspoCRM organizes customer data around a set of core record types called entities. Each entity represents a specific concept — a company, a person, a sales deal, a support ticket — and records within those entities link to each other to give you a complete view of your customer relationships. Understanding how these entities relate is the foundation of working effectively with EspoCRM.
+
+## Core entities overview
+
+<CardGroup cols={2}>
+  <Card title="Accounts" icon="building">
+    Companies or organizations you do business with. Accounts are the top-level entity that Contacts, Opportunities, and Cases attach to.
+  </Card>
+  <Card title="Contacts" icon="user">
+    Individual people at an Account. A Contact can be linked to one primary Account and additional accounts via a role relationship.
+  </Card>
+  <Card title="Leads" icon="user-plus">
+    Unqualified prospects that have not yet been converted into Contacts. Leads track interest before you know whether a prospect is worth pursuing.
+  </Card>
+  <Card title="Opportunities" icon="dollar-sign">
+    Potential sales deals. An Opportunity belongs to an Account, can have one or more Contacts, and moves through a configurable set of stages.
+  </Card>
+  <Card title="Cases" icon="headset">
+    Customer support tickets. Cases link to an Account and one or more Contacts and track issues through a status-driven workflow.
+  </Card>
+  <Card title="Meetings" icon="calendar">
+    Scheduled meetings with internal users, Contacts, and Leads. Meetings have a start time, end time, and attendee acceptance status tracking.
+  </Card>
+  <Card title="Calls" icon="phone">
+    Logged phone calls. Like Meetings, Calls can be linked to Contacts, Leads, and a parent record such as an Opportunity or Account.
+  </Card>
+  <Card title="Tasks" icon="check-square">
+    Action items assigned to a user. Tasks can be linked to any record type as a parent and have a due date and status.
+  </Card>
+</CardGroup>
+
+## Entity details and key fields
+
+### Accounts
+
+An Account represents a company or organization. It is the central hub that other records attach to — Contacts belong to Accounts, Opportunities are linked to Accounts, and Cases are raised against Accounts.
+
+| Field | Description |
+|-------|-------------|
+| **Name** | The company name. Required. |
+| **Type** | Customer, Partner, or Reseller. |
+| **Email Address** | One or more email addresses with type labels. |
+| **Phone Number** | One or more phone numbers with type labels. |
+| **Billing Address** | Billing street, city, state, country, postal code. |
+| **Shipping Address** | Separate shipping address if different from billing. |
+| **Assigned User** | The team member responsible for this account. |
+| **Description** | Free-text notes about the account. |
+
+### Contacts
+
+A Contact is an individual person, typically associated with an Account. A Contact can be linked to a primary Account and additional Accounts with a role (for example, "Decision Maker"). Contacts appear in the related panels of Opportunities and Cases they are involved with.
+
+| Field | Description |
+|-------|-------------|
+| **First / Last Name** | The person's name. |
+| **Account** | The primary Account this Contact belongs to. |
+| **Title** | The Contact's job title at the primary account. |
+| **Email Address** | One or more addresses. |
+| **Phone Number** | One or more numbers with type labels. |
+| **Assigned User** | Responsible team member. |
+| **Description** | Free-text notes. |
+
+### Leads
+
+A Lead is an unqualified prospect — someone who has shown interest but has not yet been fully evaluated. Leads have a **Status** field with values: **New**, **Assigned**, **In Process**, **Converted**, **Recycled**, and **Dead**. Once qualified, a Lead is converted (see [Lead conversion](#lead-conversion) below).
+
+| Field | Description |
+|-------|-------------|
+| **First / Last Name** | The prospect's name. |
+| **Account Name** | The company name (plain text, not linked). |
+| **Status** | Current qualification status. |
+| **Source** | Where the Lead came from (Call, Email, Web Site, Campaign, etc.). |
+| **Opportunity Amount** | Estimated deal value for forecasting. |
+| **Email Address / Phone** | Contact details. |
+
+### Opportunities
+
+An Opportunity tracks a potential sale. It has an **Amount**, a **Close Date**, a **Stage**, and a **Probability** percentage. The stage and probability are linked — when you update the stage, the probability updates automatically based on a configurable probability map.
+
+| Field | Description |
+|-------|-------------|
+| **Name** | A descriptive name for the deal. |
+| **Account** | The Account this deal is associated with. |
+| **Amount** | Deal value in the configured currency. |
+| **Close Date** | Expected or actual close date. Required. |
+| **Stage** | Current position in the pipeline (Prospecting, Qualification, Proposal, Negotiation, Closed Won, Closed Lost). |
+| **Probability** | Win likelihood as a percentage, auto-set by stage. |
+| **Lead Source** | Origin of the opportunity. |
+| **Contacts** | One or more Contacts involved in the deal, each with an optional role. |
+
+### Cases
+
+A Case is a customer support ticket. It has a **Status** (New, Assigned, Pending, Closed, Rejected, Duplicate) and can be linked to an Account, one or more Contacts, and a Lead. Cases support file attachments and an internal flag for cases that should not be visible to portal users.
+
+| Field | Description |
+|-------|-------------|
+| **Number** | Auto-incremented case number. Read-only. |
+| **Name** | A short description of the issue. |
+| **Status** | Current workflow status. |
+| **Account** | The Account raising the issue. |
+| **Contact** | The primary contact for the case. |
+| **Assigned User** | The support agent handling the case. |
+
+### Meetings
+
+A Meeting is a scheduled event with a start and end time. Meetings link to users, Contacts, and Leads as attendees. Each attendee has an acceptance status: **None**, **Accepted**, **Tentative**, or **Declined**. Meetings can have a parent record (for example, an Opportunity or Account) and support a join URL for video conferencing integrations.
+
+### Calls
+
+A Call has the same structure as a Meeting — start time, end time, attendees, and a parent record — but represents a phone call rather than a calendar event. Calls have a status of **Planned**, **Held**, or **Not Held**.
+
+### Tasks
+
+A Task is an action item with a due date and a status: **Not Started**, **Started**, **Completed**, **Canceled**, or **Deferred**. Tasks link to a parent record of any type (an Account, Opportunity, Contact, etc.) and support file attachments.
+
+## How entities relate
+
+The diagram below shows the main relationships:
+
+- An **Account** has many **Contacts**, **Opportunities**, **Cases**, **Meetings**, **Calls**, **Tasks**, and **Emails**.
+- A **Contact** belongs to one primary **Account** and can be linked to additional accounts.
+- An **Opportunity** belongs to one **Account** and can have multiple **Contacts**.
+- A **Case** belongs to one **Account** and can have multiple **Contacts**.
+- **Meetings**, **Calls**, and **Tasks** use a polymorphic parent link, allowing them to attach to any record type.
+
+## Lead conversion
+
+When a Lead is qualified, you convert it to create a **Contact**, an **Account**, and optionally an **Opportunity** in a single operation.
+
+<Steps>
+  <Step title="Open the Lead record">
+    Navigate to **Leads** in the navigation bar and click on the Lead you want to convert.
+  </Step>
+  <Step title="Click Convert">
+    In the top-right action menu, click **Convert**. The conversion form opens.
+  </Step>
+  <Step title="Review the pre-filled data">
+    EspoCRM pre-fills the Contact, Account, and Opportunity forms using data from the Lead. The Lead's name maps to the Contact name, the account name field maps to the new Account's name, and the opportunity amount maps to the Opportunity amount.
+  </Step>
+  <Step title="Choose what to create">
+    You can create a new Account, link to an existing Account, or skip Account creation. The same choice applies to Contact and Opportunity.
+  </Step>
+  <Step title="Save">
+    Click **Convert** to complete the process. The Lead status changes to **Converted** and the **Converted At** timestamp is recorded. The created records are visible in the Lead's detail view under **Created Account**, **Created Contact**, and **Created Opportunity**.
+  </Step>
+</Steps>
+
+<Note>
+  Converting a Lead does not delete the Lead record. You can always navigate back to a converted Lead and see which records were created from it.
+</Note>
+
+## Navigating records
+
+### List view
+
+When you open an entity from the navigation bar, you land on the list view. This shows all records you have access to in a sortable, filterable table. Use the search bar at the top to filter by name, and the **Advanced Search** panel to filter on any field. You can also save searches as named filters for reuse.
+
+### Detail view
+
+Click any record in the list to open its detail view. The detail view shows all fields in the top panel and related records (Meetings, Calls, Tasks, Emails, and more) in panels below. Use the **Edit** button or click any field inline to update it.
+
+### Related panels
+
+The bottom of the detail view contains related panels — for example, an Account's detail view shows panels for Contacts, Opportunities, Cases, Meetings, Calls, Tasks, and Emails. Use the **+** button in each panel header to create a new related record directly from the parent.

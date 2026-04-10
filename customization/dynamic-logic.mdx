@@ -1,0 +1,132 @@
+---
+title: "Dynamic logic: conditional field visibility and requirements"
+description: "Use dynamic logic to show or hide fields, make them required, or set them read-only based on the current values of other fields on the same record."
+keywords: ["dynamic logic", "conditional fields", "field visibility", "required fields", "EspoCRM admin"]
+---
+
+Dynamic logic lets you define rules that change the behavior of fields in real time as a user fills out a record form. A field can be shown or hidden, made required or optional, or set to read-only — all depending on the current value of another field on the same record. Rules are evaluated client-side as the user types or selects values, giving immediate visual feedback without requiring a page reload or a server round-trip.
+
+## What dynamic logic controls
+
+Each field in EspoCRM can have three independent sets of dynamic logic rules:
+
+| Rule type | Effect |
+|-----------|--------|
+| **Visible** | The field is shown when the condition is met. If the condition is not met, the field is hidden. |
+| **Required** | The field is required (cannot be saved blank) when the condition is met. |
+| **Read-only** | The field is read-only when the condition is met. The user can see the value but cannot change it. |
+
+Panel visibility can also be controlled the same way — you can hide entire layout sections based on field values.
+
+## Where to configure dynamic logic
+
+Dynamic logic rules are configured in the field editor inside **Entity Manager**:
+
+<Steps>
+  <Step title="Open Entity Manager">
+    Go to **Admin** → **Entity Manager** and click the entity you want to customize.
+  </Step>
+  <Step title="Open the field editor">
+    Click **Fields**, then click the name of the field you want to add dynamic logic to.
+  </Step>
+  <Step title="Scroll to Dynamic Logic">
+    At the bottom of the field editor, find the **Dynamic Logic** section. You will see three sub-sections: **Visible**, **Required**, and **Read-only**.
+  </Step>
+  <Step title="Add a condition">
+    Click **Add Condition** in the section you want to configure. A row appears where you can choose a field, a condition type, and a comparison value.
+  </Step>
+  <Step title="Save">
+    Click **Save** on the field editor. The rule takes effect immediately in the form UI for all users.
+  </Step>
+</Steps>
+
+## Condition types
+
+When you add a condition, you select a field to test, a condition type, and (for most types) a value to compare against.
+
+| Condition type | Description |
+|----------------|-------------|
+| `equals` | The field value exactly matches the specified value. |
+| `notEquals` | The field value does not match the specified value. |
+| `isEmpty` | The field has no value (null, empty string, empty array, or false). |
+| `isNotEmpty` | The field has any value that is not empty. |
+| `isTrue` | The boolean field is checked/true. |
+| `isFalse` | The boolean field is unchecked/false. |
+| `contains` | The string field contains the specified substring, or the multi-select field includes the specified item. |
+| `notContains` | The field does not contain the specified substring or item. |
+| `has` | The array or multi-select field includes the specified item. |
+| `notHas` | The array or multi-select field does not include the specified item. |
+| `startsWith` | The string field starts with the specified prefix. |
+| `endsWith` | The string field ends with the specified suffix. |
+| `greaterThan` | The numeric or date field is greater than the specified value. |
+| `lessThan` | The numeric or date field is less than the specified value. |
+| `greaterThanOrEquals` | Greater than or equal to the specified value. |
+| `lessThanOrEquals` | Less than or equal to the specified value. |
+| `in` | The field value is one of a specified list of values. |
+| `notIn` | The field value is not in the specified list. |
+| `isToday` | The date or datetime field is today. |
+| `inFuture` | The date or datetime field is in the future. |
+| `inPast` | The date or datetime field is in the past. |
+
+## Combining conditions with AND / OR
+
+When you add multiple conditions to a single rule, EspoCRM groups them. Each group is evaluated with either **AND** (all conditions must be true) or **OR** (at least one must be true). You can also nest groups to build complex logic.
+
+Use the toggle at the top of each condition group to switch between **AND** and **OR**.
+
+**Example — AND logic:**
+
+Show the `warrantyExpiryDate` field only when `type` equals `Hardware` **and** `status` equals `Active`:
+
+- Group (AND):
+  - `type` equals `Hardware`
+  - `status` equals `Active`
+
+**Example — OR logic:**
+
+Make the `escalationReason` field required when `priority` equals `Critical` **or** `priority` equals `Urgent`:
+
+- Group (OR):
+  - `priority` equals `Critical`
+  - `priority` equals `Urgent`
+
+## Practical example: showing a field based on another field's value
+
+The most common use of dynamic logic is revealing a contextual field only when it is relevant. For example: show a `cancellationReason` text field only when the `status` field is set to `Cancelled`.
+
+<Steps>
+  <Step title="Locate the target field">
+    In **Entity Manager**, open the entity and click the `cancellationReason` field to edit it.
+  </Step>
+  <Step title="Configure Visible condition">
+    Under **Dynamic Logic** → **Visible**, click **Add Condition**.
+  </Step>
+  <Step title="Set the condition">
+    - **Field**: `Status`
+    - **Condition**: `equals`
+    - **Value**: `Cancelled`
+  </Step>
+  <Step title="Save">
+    Click **Save**. On the edit form, the `cancellationReason` field will now be invisible until the user changes `Status` to `Cancelled`, at which point it appears immediately.
+  </Step>
+</Steps>
+
+## Applying dynamic logic to panels
+
+You can also control the visibility of entire layout panels using dynamic logic. To do this:
+
+1. Go to **Admin** → **Layout Manager** → select the entity → **Detail**.
+2. Click the gear icon on a panel header.
+3. Under **Dynamic Logic**, add a **Visible** condition the same way you would for a field.
+
+When the condition is not met, the entire panel (including all its fields) is hidden from the form.
+
+## Limitations
+
+- Dynamic logic rules run only in the **browser**. They do not enforce rules on API calls or formula-triggered saves. To enforce a business rule server-side, use a **Before save formula** or a **Validation Rule** in addition to dynamic logic.
+- Conditions can only reference fields on the **same record**. You cannot reference fields from a related record in a dynamic logic condition.
+- Dynamic logic affects only the **edit form** and the **detail view**. List views and search filters are not affected.
+
+<Tip>
+  For server-side enforcement, combine dynamic logic (for the UI experience) with a formula Before save script (to ensure correctness even when records are updated via the API or workflow automation).
+</Tip>

@@ -1,0 +1,179 @@
+---
+title: "EspoCRM REST API — conventions and getting started"
+description: "Learn the base URL, HTTP methods, JSON request and response format, status codes, pagination, and error handling for the EspoCRM REST API."
+keywords: ["espocrm api", "rest api", "api overview", "pagination", "http methods", "status codes"]
+---
+
+The EspoCRM REST API gives you programmatic access to all CRM data — contacts, leads, accounts, opportunities, and any custom entities you create. Every request and response uses JSON, and the API follows standard REST conventions, so it integrates naturally with any HTTP client or programming language.
+
+## Base URL
+
+All API endpoints are relative to:
+
+```
+https://your-espocrm.com/api/v1/
+```
+
+Replace `your-espocrm.com` with the hostname of your EspoCRM instance. All requests must be made over HTTPS in production.
+
+## Entity type paths
+
+Entity type names map directly to URL path segments. EspoCRM uses PascalCase for entity names:
+
+| Entity | URL path |
+|---|---|
+| Contact | `/api/v1/Contact` |
+| Account | `/api/v1/Account` |
+| Lead | `/api/v1/Lead` |
+| Opportunity | `/api/v1/Opportunity` |
+| Case | `/api/v1/Case` |
+
+Custom entities you create through the Entity Manager follow the same pattern.
+
+## HTTP methods
+
+The API uses standard HTTP methods for CRUD operations:
+
+| Method | Operation | Example |
+|---|---|---|
+| `GET` | Read a record or list records | `GET /api/v1/Contact/{id}` |
+| `POST` | Create a record | `POST /api/v1/Contact` |
+| `PUT` | Replace a record | `PUT /api/v1/Contact/{id}` |
+| `PATCH` | Partially update a record | `PATCH /api/v1/Contact/{id}` |
+| `DELETE` | Delete a record | `DELETE /api/v1/Contact/{id}` |
+
+## Request format
+
+Set `Content-Type: application/json` on all requests that include a body. The body must be a valid JSON object.
+
+```bash
+curl -X POST https://your-espocrm.com/api/v1/Contact \
+  -H "Authorization: Basic <base64-credentials>" \
+  -H "Content-Type: application/json" \
+  -d '{"firstName": "Alice", "lastName": "Smith", "emailAddress": "alice@example.com"}'
+```
+
+A successful create returns the full record:
+
+```json
+{
+  "id": "64a1b2c3d4e5f6a7b8c9d0e1",
+  "firstName": "Alice",
+  "lastName": "Smith",
+  "emailAddress": "alice@example.com",
+  "createdAt": "2026-04-10T09:00:00+00:00",
+  "modifiedAt": "2026-04-10T09:00:00+00:00"
+}
+```
+
+## Response format
+
+All responses are JSON. List responses use this envelope:
+
+```json
+{
+  "total": 142,
+  "list": [
+    { "id": "64a1b2c3...", "firstName": "Alice", ... },
+    { "id": "75b2c3d4...", "firstName": "Bob", ... }
+  ]
+}
+```
+
+## Status codes
+
+| Code | Meaning |
+|---|---|
+| `200 OK` | Request succeeded; body contains the result |
+| `204 No Content` | Request succeeded; no body (e.g., DELETE) |
+| `400 Bad Request` | Invalid request parameters or body |
+| `401 Unauthorized` | Missing or invalid credentials |
+| `403 Forbidden` | Authenticated but lacking permission |
+| `404 Not Found` | Record or endpoint does not exist |
+| `500 Internal Server Error` | Unexpected server error |
+
+## Error response format
+
+Error responses follow a consistent structure:
+
+```json
+{
+  "code": 404,
+  "message": "Not found"
+}
+```
+
+You can use the `code` field to handle errors programmatically without relying on HTTP status codes alone.
+
+## Pagination
+
+List endpoints support `offset` and `maxSize` query parameters:
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `offset` | integer | `0` | Number of records to skip |
+| `maxSize` | integer | `20` | Maximum records to return |
+
+```bash
+# Fetch records 21–40
+curl "https://your-espocrm.com/api/v1/Contact?offset=20&maxSize=20" \
+  -H "Authorization: Basic <base64-credentials>"
+```
+
+The `total` field in the response tells you the total number of matching records, which you can use to calculate the number of pages.
+
+<Note>
+The default `maxSize` is `20`. The maximum allowed value depends on your EspoCRM configuration but is typically `200`. Check `Admin → Settings` to confirm.
+</Note>
+
+## A complete list request
+
+```bash
+curl "https://your-espocrm.com/api/v1/Contact?offset=0&maxSize=5&orderBy=createdAt&order=desc" \
+  -H "Authorization: Basic <base64-credentials>"
+```
+
+```json
+{
+  "total": 142,
+  "list": [
+    {
+      "id": "64a1b2c3d4e5f6a7b8c9d0e1",
+      "firstName": "Alice",
+      "lastName": "Smith",
+      "emailAddress": "alice@example.com",
+      "createdAt": "2026-04-10T09:00:00+00:00"
+    }
+  ]
+}
+```
+
+## OpenAPI schema
+
+EspoCRM generates an OpenAPI 3.x schema that reflects your instance's entities and fields, including custom ones. Fetch it at:
+
+```
+GET https://your-espocrm.com/api/v1/OpenApi
+```
+
+Optional query parameters:
+
+| Parameter | Description |
+|---|---|
+| `skipCustom=true` | Exclude custom entities from the schema |
+| `module=<ModuleName>` | Return schema for a specific module only |
+
+<Note>
+Access to the OpenAPI endpoint requires the `OpenApi` scope permission on your user or role.
+</Note>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="key" href="/api/authentication">
+    Set up API Key, HMAC, or Basic Auth credentials
+  </Card>
+  <Card title="CRUD operations" icon="database" href="/api/crud-operations">
+    Create, read, update, and delete records
+  </Card>
+</CardGroup>

@@ -1,0 +1,125 @@
+---
+title: 'Scheduled jobs and background tasks in EspoCRM'
+description: 'Understand EspoCRM scheduled jobs, how to configure system cron, enable or disable built-in jobs, read execution logs, and create custom background tasks.'
+keywords: ['scheduled jobs', 'cron', 'background tasks', 'EspoCRM', 'administration', 'cron.php', 'job scheduler']
+---
+
+EspoCRM uses a scheduled job system to run recurring tasks in the background — fetching emails, sending notifications, cleaning up old data, and more. Jobs are triggered by a system cron entry that calls EspoCRM's `cron.php` script on a fixed interval. Without cron configured, none of these background tasks will run, regardless of what you enable in the admin panel.
+
+<Warning>
+  Scheduled jobs will not execute until you configure a system cron entry that calls `cron.php` at least every minute. If cron is not set up, email fetching, notifications, token cleanup, and other critical tasks will silently stop working.
+</Warning>
+
+## Configuring system cron
+
+Add the following entry to your server's crontab. Open it with `crontab -e` under the web server user (typically `www-data` or `nginx`):
+
+```bash
+* * * * * /usr/bin/php /path/to/espocrm/cron.php > /dev/null 2>&1
+```
+
+Replace `/path/to/espocrm` with the absolute path to your EspoCRM installation directory. On shared hosting, use the cPanel or Plesk cron interface to add the same PHP command.
+
+To verify the path to PHP on your server:
+
+```bash
+which php
+```
+
+EspoCRM's own cron runner (`cron.php`) reads the list of active scheduled jobs, checks each job's scheduling expression against the current time, and queues work that is due to run. Each active scheduled job fires according to its own cron expression, not at the same interval as the system cron call.
+
+## Managing scheduled jobs in the admin panel
+
+Go to **Administration → Scheduled Jobs** to see the full list of jobs, their current status, scheduling expression, and the time of their last run.
+
+From this view you can:
+- **Enable or disable** a job by changing its **Status** between `Active` and `Inactive`.
+- **Edit the scheduling expression** to change how often a job runs.
+- **View the execution log** by opening a job and scrolling to the **Log** panel, which records each run's start time, finish time, and status.
+
+## Built-in scheduled jobs
+
+EspoCRM ships with the following built-in jobs. System jobs (marked as internal) manage the job queue infrastructure itself and should not be modified.
+
+<CardGroup cols={2}>
+  <Card title="Check Inbound Emails" icon="envelope">
+    Fetches new messages from all active group email accounts (inbound emails) via IMAP. Default schedule: every 2 minutes.
+  </Card>
+  <Card title="Check Email Accounts" icon="inbox">
+    Fetches new messages from personal email accounts belonging to individual users. Default schedule: every 1 minute.
+  </Card>
+  <Card title="Send Email Notifications" icon="bell">
+    Dispatches queued notification emails for mentions, assignments, and stream updates. Default schedule: every 2 minutes.
+  </Card>
+  <Card title="Send Scheduled Emails" icon="paper-plane">
+    Sends bulk/mass emails that have been queued for delivery. Default schedule: every 10 minutes.
+  </Card>
+  <Card title="Cleanup" icon="broom">
+    Removes expired auth tokens, old job log records, orphaned attachments, and other accumulated data to keep the database lean. Default schedule: weekly (Sunday at 01:01).
+  </Card>
+  <Card title="Auth Token Control" icon="shield">
+    Validates and expires authentication tokens that have passed their lifetime. Default schedule: every 6 minutes.
+  </Card>
+  <Card title="Process Webhook Queue" icon="share-nodes">
+    Dispatches outgoing webhook payloads for subscribed events. Default schedule: every 2 minutes.
+  </Card>
+  <Card title="Check for New Version" icon="arrow-up">
+    Checks the EspoCRM update server for a newer release and shows an alert in the admin panel when one is available. Default schedule: daily at 05:15.
+  </Card>
+  <Card title="Check for New Extension Versions" icon="puzzle-piece">
+    Checks for updates to installed extensions. Default schedule: daily at 05:25.
+  </Card>
+  <Card title="Sync Currency Rates" icon="coins">
+    Refreshes exchange rates from an external currency service. Default schedule: daily at 00:02.
+  </Card>
+</CardGroup>
+
+## Scheduling expressions
+
+EspoCRM uses standard five-field cron syntax for job scheduling:
+
+```
+*    *    *    *    *
+│    │    │    │    └── Day of week (0–7, Sunday = 0 or 7)
+│    │    │    └─────── Month (1–12)
+│    │    └──────────── Day of month (1–31)
+│    └───────────────── Hour (0–23)
+└────────────────────── Minute (0–59)
+```
+
+Common patterns:
+
+| Expression | Meaning |
+|-----------|---------|
+| `* * * * *` | Every minute |
+| `*/2 * * * *` | Every 2 minutes |
+| `0 * * * *` | Every hour on the hour |
+| `0 8 * * 1-5` | 08:00 on weekdays |
+| `1 1 * * 0` | 01:01 every Sunday |
+
+## Job execution logs
+
+Each scheduled job maintains a log of recent executions. Open a job record and scroll to the **Log** panel to see a table of runs with their start time, finish time, and status (`Success` or `Failed`). Failed runs log the error message, which is useful for diagnosing connectivity issues with IMAP servers or external APIs.
+
+Logs are automatically pruned by the **Cleanup** job to prevent unbounded growth.
+
+## Creating a custom scheduled job
+
+You can add your own background task by implementing a job class and registering it through EspoCRM's metadata system in a custom extension or in the `custom/` directory.
+
+1. Create a PHP class that implements `Espo\Core\Job\JobDataLess` (for jobs that need no parameters) in your extension or in `custom/Espo/Custom/Classes/Jobs/`.
+2. Register the job in `custom/Espo/Custom/Resources/metadata/app/scheduledJobs.json`:
+
+```json
+{
+  "MyCustomJob": {
+    "name": "My Custom Job",
+    "jobClassName": "Espo\\Custom\\Classes\\Jobs\\MyCustomJob",
+    "scheduling": "0 3 * * *"
+  }
+}
+```
+
+3. Run **Administration → Rebuild** to reload metadata. The job will appear in the Scheduled Jobs list and can be enabled or disabled like any built-in job.
+
+Custom jobs respect the same cron execution model: the job class `run()` method is called by the queue runner when the scheduling expression matches.

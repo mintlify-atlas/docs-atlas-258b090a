@@ -1,0 +1,113 @@
+---
+title: "Reports and dashboards in EspoCRM"
+description: "Build list, grid, and joint reports on any entity, visualize data with charts, and organize dashlets into shared or personal dashboards in EspoCRM."
+keywords: ["reports", "dashboards", "dashlets", "charts", "list report", "grid report", "joint report", "filters", "grouping", "sales pipeline"]
+---
+
+EspoCRM includes a built-in reporting engine that lets you query any entity, apply filters, group and aggregate data, and display results as tables or charts. Reports appear as dashlets on your dashboard, giving you at-a-glance visibility into pipeline health, activity volumes, case loads, and any other metrics you track.
+
+<Info>
+  The Reports feature is available in the Advanced Pack extension. If you do not see Reports in your navigation bar, check that the extension is installed.
+</Info>
+
+## Report types
+
+EspoCRM supports three report types:
+
+<CardGroup cols={3}>
+  <Card title="List report" icon="list">
+    Returns individual records matching your filters. Equivalent to a saved search with specific columns. Useful for exports or detailed record lists.
+  </Card>
+  <Card title="Grid report" icon="table">
+    Aggregates data with grouping and summary functions (count, sum, average, min, max). Displays as a table and optionally as a chart. The primary report type for metrics.
+  </Card>
+  <Card title="Joint report" icon="merge">
+    Combines the results of two or more grid reports into a single table, useful for comparing metrics across different criteria in one view.
+  </Card>
+</CardGroup>
+
+## Building a report
+
+The example below creates a grid report showing the total opportunity amount by stage for the current quarter.
+
+<Steps>
+  <Step title="Create a new report">
+    Navigate to **Reports** in the navigation bar and click **Create Report**. Choose the **Entity** (for this example, **Opportunity**) and select **Grid** as the report type. Click **Next**.
+  </Step>
+  <Step title="Select columns">
+    Add the columns you want in the report. For a by-stage summary, add:
+    - **Stage** — the grouping column
+    - **Amount (SUM)** — the aggregated value
+
+    Use the **+** button to add each column and choose the aggregation function from the dropdown next to each field.
+  </Step>
+  <Step title="Add a grouping">
+    In the **Group By** section, add **Stage**. This groups rows by stage so that amount is summed per stage.
+  </Step>
+  <Step title="Apply filters">
+    In the **Filters** section, add a filter on **Close Date** with the condition **Current Quarter**. This restricts the report to opportunities closing in the current quarter.
+  </Step>
+  <Step title="Add a chart (optional)">
+    In the **Chart** section, select a chart type — for pipeline data, **Bar** or **Pie** work well. Choose **Stage** as the X axis and **Amount (SUM)** as the Y axis.
+  </Step>
+  <Step title="Save and run">
+    Give the report a name and click **Save**. EspoCRM runs the report immediately and shows the results. Click **Run** at any time to refresh the data.
+  </Step>
+</Steps>
+
+## Filters
+
+Filters control which records are included in a report. You can filter on any field of the target entity, including related fields (for example, filter on Account type when reporting on Opportunities).
+
+Filter conditions include:
+- Exact match, contains, starts with, ends with
+- Greater than, less than, between (for numeric and date fields)
+- Is empty, is not empty
+- Relative date ranges: **Current Year**, **Current Quarter**, **Current Month**, **Current Fiscal Year**, **Last 7 Days**, and more
+
+Filters can be set as **runtime filters** — parameters that appear when someone views the report dashlet, letting them adjust the date range or other criteria without editing the report itself.
+
+## Dashboards and dashlets
+
+Your dashboard is the home screen in EspoCRM, made up of configurable widgets called **dashlets**. Each dashlet displays a specific type of data.
+
+### Available dashlet types
+
+| Dashlet | What it shows |
+|---------|---------------|
+| **Opportunities** | A list of opportunities filtered by assigned user, stage, or date. |
+| **Opportunities by Stage** | A chart of opportunity count or amount grouped by stage. |
+| **Sales Pipeline** | A funnel chart of opportunity amounts across stages for a date range, with optional team filter. |
+| **Sales by Month** | A bar chart of won opportunity amounts grouped by month. |
+| **Leads** | A list of recent or assigned leads. |
+| **Cases** | A list of open or assigned cases. |
+| **Activities** | Upcoming and recent Meetings, Calls, and Tasks. |
+| **Calendar** | A mini calendar showing your scheduled events. |
+| **Meetings** | A list of upcoming meetings. |
+| **Calls** | A list of upcoming or recent calls. |
+| **Tasks** | Your open tasks. |
+| **Report (Chart)** | Renders any grid report as a chart dashlet. |
+| **Report (List)** | Renders any list or grid report as a table dashlet. |
+
+### Adding a dashlet
+
+1. On your dashboard, click the **+** icon (usually in the top-right of the dashboard area).
+2. Select the dashlet type you want to add.
+3. Configure the dashlet options (title, filters, date range, and so on) and click **Save**.
+4. Drag the dashlet to reposition it. Resize by dragging the bottom-right corner.
+
+### Multiple dashboards
+
+You can create multiple dashboard tabs for different purposes — a sales dashboard, a support dashboard, a management overview. Click the **+** tab button at the top of the dashboard area to add a new dashboard and give it a name.
+
+### Sharing dashboards
+
+A dashboard can be made available to a team so all members see the same layout. To share:
+
+1. Click the dashboard name to open its settings.
+2. Enable **Shared** and select the **Team** that should have access.
+3. Click **Save**. Team members will see the shared dashboard as one of their dashboard tabs.
+
+<Note>
+  Users can still add their own dashlets to a shared dashboard without affecting other team members' views.
+</Note>

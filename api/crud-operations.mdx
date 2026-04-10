@@ -1,0 +1,378 @@
+---
+title: "CRUD operations — create, read, update, and delete records"
+description: "Complete reference for creating, reading, updating, and deleting EspoCRM records via the REST API, with curl examples for Contact and Opportunity entities."
+keywords: ["espocrm api", "crud", "create record", "read record", "update record", "delete record", "rest api"]
+---
+
+The EspoCRM REST API exposes a uniform set of endpoints for every entity type — Contact, Account, Lead, Opportunity, Case, Meeting, Call, Task, Note, and any custom entities you create. All endpoints follow the same pattern: `GET`, `POST`, `PUT`, and `DELETE` on `https://your-espocrm.com/api/v1/{EntityType}`. Responses are JSON, and the entity type names are PascalCase (e.g., `Contact`, not `contact`).
+
+## List records
+
+Returns a paginated list of records. The response always contains `list` (an array of record objects) and `total` (total count of matching records, before pagination).
+
+```
+GET /api/v1/{EntityType}
+```
+
+<ParamField query="offset" type="number" default="0">
+  Number of records to skip. Use together with `maxSize` for pagination.
+</ParamField>
+
+<ParamField query="maxSize" type="number" default="20">
+  Maximum number of records to return per page. The upper limit is configured in **Admin → Settings** and typically defaults to 200.
+</ParamField>
+
+<ParamField query="orderBy" type="string">
+  Field name to sort by, e.g. `createdAt`, `lastName`, `amount`.
+</ParamField>
+
+<ParamField query="order" type="string">
+  Sort direction. Accepts `ASC` or `DESC`. Defaults to the entity's default sort order.
+</ParamField>
+
+<ParamField query="select" type="string">
+  Comma-separated list of field names to include in each returned record. Omit to return all fields. Example: `id,firstName,lastName,emailAddress`.
+</ParamField>
+
+<ParamField query="where" type="string">
+  URL-encoded JSON array of filter conditions. See [Search and filter](/api/search-and-filter) for the full syntax.
+</ParamField>
+
+<ParamField query="textFilter" type="string">
+  Full-text search string. Searches across configured searchable fields for the entity.
+</ParamField>
+
+<Tabs>
+  <Tab title="Contact">
+    ```bash
+    curl "https://your-espocrm.com/api/v1/Contact?offset=0&maxSize=5&orderBy=createdAt&order=DESC" \
+      -H "Authorization: Basic <base64-credentials>"
+    ```
+
+    ```json
+    {
+      "total": 312,
+      "list": [
+        {
+          "id": "64a1b2c3d4e5f6a7b8c9d0e1",
+          "firstName": "Alice",
+          "lastName": "Smith",
+          "emailAddress": "alice@example.com",
+          "accountId": "75b2c3d4e5f6a7b8c9d0e1f2",
+          "accountName": "Acme Corp",
+          "createdAt": "2026-04-10T09:00:00+00:00",
+          "modifiedAt": "2026-04-10T09:00:00+00:00"
+        }
+      ]
+    }
+    ```
+  </Tab>
+  <Tab title="Opportunity">
+    ```bash
+    curl "https://your-espocrm.com/api/v1/Opportunity?offset=0&maxSize=5&orderBy=amount&order=DESC" \
+      -H "Authorization: Basic <base64-credentials>"
+    ```
+
+    ```json
+    {
+      "total": 48,
+      "list": [
+        {
+          "id": "88c3d4e5f6a7b8c9d0e1f2a3",
+          "name": "Enterprise License Renewal",
+          "amount": 75000,
+          "stage": "Proposal/Price Quote",
+          "closeDate": "2026-06-30",
+          "accountId": "75b2c3d4e5f6a7b8c9d0e1f2",
+          "accountName": "Acme Corp",
+          "createdAt": "2026-03-15T14:30:00+00:00",
+          "modifiedAt": "2026-04-01T11:20:00+00:00"
+        }
+      ]
+    }
+    ```
+  </Tab>
+</Tabs>
+
+<ResponseField name="total" type="number" required>
+  Total count of matching records across all pages.
+</ResponseField>
+
+<ResponseField name="list" type="object[]" required>
+  Array of record objects. Each object contains the record's fields. The specific fields depend on the entity type and what was requested via `select`.
+
+  <Expandable title="Common fields on every record">
+    <ResponseField name="id" type="string" required>
+      Unique record ID.
+    </ResponseField>
+    <ResponseField name="createdAt" type="string" required>
+      ISO 8601 timestamp of when the record was created.
+    </ResponseField>
+    <ResponseField name="modifiedAt" type="string" required>
+      ISO 8601 timestamp of the last modification.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+---
+
+## Get a single record
+
+Returns a single record by its ID.
+
+```
+GET /api/v1/{EntityType}/{id}
+```
+
+<Tabs>
+  <Tab title="Contact">
+    ```bash
+    curl "https://your-espocrm.com/api/v1/Contact/64a1b2c3d4e5f6a7b8c9d0e1" \
+      -H "Authorization: Basic <base64-credentials>"
+    ```
+
+    ```json
+    {
+      "id": "64a1b2c3d4e5f6a7b8c9d0e1",
+      "firstName": "Alice",
+      "lastName": "Smith",
+      "emailAddress": "alice@example.com",
+      "phoneNumber": "+1 415 555 0100",
+      "title": "VP of Engineering",
+      "accountId": "75b2c3d4e5f6a7b8c9d0e1f2",
+      "accountName": "Acme Corp",
+      "assignedUserId": "a1b2c3d4e5f6a7b8c9d0e1f2",
+      "assignedUserName": "Bob Jones",
+      "createdAt": "2026-04-10T09:00:00+00:00",
+      "modifiedAt": "2026-04-10T09:00:00+00:00"
+    }
+    ```
+  </Tab>
+  <Tab title="Opportunity">
+    ```bash
+    curl "https://your-espocrm.com/api/v1/Opportunity/88c3d4e5f6a7b8c9d0e1f2a3" \
+      -H "Authorization: Basic <base64-credentials>"
+    ```
+
+    ```json
+    {
+      "id": "88c3d4e5f6a7b8c9d0e1f2a3",
+      "name": "Enterprise License Renewal",
+      "amount": 75000,
+      "stage": "Proposal/Price Quote",
+      "probability": 60,
+      "closeDate": "2026-06-30",
+      "description": "Annual renewal for enterprise tier.",
+      "accountId": "75b2c3d4e5f6a7b8c9d0e1f2",
+      "accountName": "Acme Corp",
+      "assignedUserId": "a1b2c3d4e5f6a7b8c9d0e1f2",
+      "assignedUserName": "Bob Jones",
+      "createdAt": "2026-03-15T14:30:00+00:00",
+      "modifiedAt": "2026-04-01T11:20:00+00:00"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+The server returns `404 Not Found` if the record does not exist and `403 Forbidden` if your API user lacks read access to it.
+
+---
+
+## Create a record
+
+Creates a new record. Send the field values as a JSON object in the request body. System-managed fields (`id`, `createdAt`, `modifiedAt`, `createdById`) are ignored even if included.
+
+```
+POST /api/v1/{EntityType}
+```
+
+The response is the full record object as it exists after creation, including system-assigned values such as `id` and `createdAt`.
+
+<Tabs>
+  <Tab title="Contact">
+    ```bash
+    curl -X POST "https://your-espocrm.com/api/v1/Contact" \
+      -H "Authorization: Basic <base64-credentials>" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "firstName": "Carol",
+        "lastName": "White",
+        "emailAddress": "carol@example.com",
+        "phoneNumber": "+1 650 555 0199",
+        "title": "CTO",
+        "accountId": "75b2c3d4e5f6a7b8c9d0e1f2"
+      }'
+    ```
+
+    ```json
+    {
+      "id": "99d4e5f6a7b8c9d0e1f2a3b4",
+      "firstName": "Carol",
+      "lastName": "White",
+      "emailAddress": "carol@example.com",
+      "phoneNumber": "+1 650 555 0199",
+      "title": "CTO",
+      "accountId": "75b2c3d4e5f6a7b8c9d0e1f2",
+      "accountName": "Acme Corp",
+      "createdAt": "2026-04-10T10:30:00+00:00",
+      "modifiedAt": "2026-04-10T10:30:00+00:00"
+    }
+    ```
+  </Tab>
+  <Tab title="Opportunity">
+    ```bash
+    curl -X POST "https://your-espocrm.com/api/v1/Opportunity" \
+      -H "Authorization: Basic <base64-credentials>" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "name": "Cloud Expansion Q3",
+        "amount": 42000,
+        "stage": "Needs Analysis",
+        "closeDate": "2026-09-30",
+        "accountId": "75b2c3d4e5f6a7b8c9d0e1f2"
+      }'
+    ```
+
+    ```json
+    {
+      "id": "aab5c6d7e8f9a0b1c2d3e4f5",
+      "name": "Cloud Expansion Q3",
+      "amount": 42000,
+      "stage": "Needs Analysis",
+      "probability": 20,
+      "closeDate": "2026-09-30",
+      "accountId": "75b2c3d4e5f6a7b8c9d0e1f2",
+      "accountName": "Acme Corp",
+      "createdAt": "2026-04-10T11:00:00+00:00",
+      "modifiedAt": "2026-04-10T11:00:00+00:00"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+<Note>
+  If the record matches an existing duplicate, EspoCRM returns `409 Conflict` with the duplicate records in the response body. You can suppress this check by passing the header `X-Skip-Duplicate-Check: true`.
+</Note>
+
+---
+
+## Update a record
+
+Partially updates an existing record. Only include the fields you want to change — all other fields remain unchanged. Both `PUT` and `PATCH` are accepted and behave identically (partial update).
+
+```
+PUT /api/v1/{EntityType}/{id}
+```
+
+The response is the full record object after the update.
+
+<Tabs>
+  <Tab title="Contact">
+    ```bash
+    curl -X PUT "https://your-espocrm.com/api/v1/Contact/64a1b2c3d4e5f6a7b8c9d0e1" \
+      -H "Authorization: Basic <base64-credentials>" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "title": "SVP of Engineering",
+        "phoneNumber": "+1 415 555 0111"
+      }'
+    ```
+
+    ```json
+    {
+      "id": "64a1b2c3d4e5f6a7b8c9d0e1",
+      "firstName": "Alice",
+      "lastName": "Smith",
+      "title": "SVP of Engineering",
+      "phoneNumber": "+1 415 555 0111",
+      "emailAddress": "alice@example.com",
+      "accountId": "75b2c3d4e5f6a7b8c9d0e1f2",
+      "accountName": "Acme Corp",
+      "modifiedAt": "2026-04-10T12:00:00+00:00"
+    }
+    ```
+  </Tab>
+  <Tab title="Opportunity">
+    ```bash
+    curl -X PUT "https://your-espocrm.com/api/v1/Opportunity/88c3d4e5f6a7b8c9d0e1f2a3" \
+      -H "Authorization: Basic <base64-credentials>" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "stage": "Closed Won",
+        "probability": 100,
+        "amount": 80000
+      }'
+    ```
+
+    ```json
+    {
+      "id": "88c3d4e5f6a7b8c9d0e1f2a3",
+      "name": "Enterprise License Renewal",
+      "amount": 80000,
+      "stage": "Closed Won",
+      "probability": 100,
+      "closeDate": "2026-06-30",
+      "accountId": "75b2c3d4e5f6a7b8c9d0e1f2",
+      "accountName": "Acme Corp",
+      "modifiedAt": "2026-04-10T12:00:00+00:00"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Delete a record
+
+Permanently deletes a record. The response body is `true` on success.
+
+```
+DELETE /api/v1/{EntityType}/{id}
+```
+
+<Tabs>
+  <Tab title="Contact">
+    ```bash
+    curl -X DELETE "https://your-espocrm.com/api/v1/Contact/64a1b2c3d4e5f6a7b8c9d0e1" \
+      -H "Authorization: Basic <base64-credentials>"
+    ```
+
+    ```json
+    true
+    ```
+  </Tab>
+  <Tab title="Opportunity">
+    ```bash
+    curl -X DELETE "https://your-espocrm.com/api/v1/Opportunity/88c3d4e5f6a7b8c9d0e1f2a3" \
+      -H "Authorization: Basic <base64-credentials>"
+    ```
+
+    ```json
+    true
+    ```
+  </Tab>
+</Tabs>
+
+<Warning>
+  Deletion is permanent and cannot be undone through the API. EspoCRM soft-deletes records internally (sets a `deleted` flag), but they are not accessible via the API after deletion.
+</Warning>
+
+---
+
+## Common entity type names
+
+The following entity types are available in a standard EspoCRM installation. Use the exact PascalCase name in the URL path.
+
+| Entity type | URL path | Description |
+|---|---|---|
+| `Contact` | `/api/v1/Contact` | Individual people associated with accounts |
+| `Account` | `/api/v1/Account` | Companies or organisations |
+| `Lead` | `/api/v1/Lead` | Unqualified prospects |
+| `Opportunity` | `/api/v1/Opportunity` | Sales deals linked to accounts |
+| `Case` | `/api/v1/Case` | Support tickets |
+| `Meeting` | `/api/v1/Meeting` | Scheduled meetings |
+| `Call` | `/api/v1/Call` | Phone call records |
+| `Task` | `/api/v1/Task` | To-do items |
+| `Note` | `/api/v1/Note` | Stream posts and comments |
+
+Custom entities created through **Admin → Entity Manager** follow the same pattern using the entity's API name.

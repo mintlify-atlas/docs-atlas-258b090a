@@ -1,0 +1,261 @@
+---
+title: 'Building EspoCRM extensions and modules'
+description: 'How to create a packaged EspoCRM extension: manifest.json, directory structure, custom entities, services, routes, and installation via the admin panel.'
+keywords: ['espocrm', 'extension', 'module', 'manifest', 'custom entity', 'install', 'package', 'zip']
+---
+
+An EspoCRM extension is a zip archive that contains PHP classes, metadata JSON files, and a `manifest.json` descriptor. When installed through the admin panel, EspoCRM extracts the archive into `custom/Espo/Modules/{ModuleName}/` and rebuilds its metadata and autoloader caches. This page walks through the structure of an extension, the manifest format, and the key building blocks you will use.
+
+## Extension package structure
+
+A minimal extension archive contains the following layout:
+
+```text
+my-extension.zip
+├── manifest.json
+├── Files/
+│   └── custom/
+│       └── Espo/
+│           └── Modules/
+│               └── MyModule/
+│                   ├── Binding.php
+│                   ├── Entities/
+│                   │   └── Project.php
+│                   ├── Hooks/
+│                   │   └── Project/
+│                   │       └── StatusNotifier.php
+│                   ├── Services/
+│                   │   └── Project.php
+│                   └── Resources/
+│                       └── metadata/
+│                           ├── entityDefs/
+│                           │   └── Project.json
+│                           ├── scopes/
+│                           │   └── Project.json
+│                           └── clientDefs/
+│                               └── Project.json
+└── Scripts/
+    ├── BeforeInstall.php
+    ├── AfterInstall.php
+    ├── BeforeUninstall.php
+    └── AfterUninstall.php
+```
+
+Everything under `Files/` is copied to the EspoCRM installation root. The `Scripts/` directory contains optional lifecycle hooks that run during install or uninstall.
+
+## manifest.json
+
+`manifest.json` is required and must live at the root of the zip archive. It tells EspoCRM who wrote the extension, what version it is, and which EspoCRM versions it supports.
+
+```json
+{
+    "name": "My Module",
+    "description": "Adds project tracking to EspoCRM.",
+    "author": "Acme Corp",
+    "php": "8.3",
+    "version": "1.0.0",
+    "acceptableVersions": [
+        ">=9.0.0"
+    ],
+    "releaseDate": "2026-04-01",
+    "readme": ""
+}
+```
+
+<Info>
+  The `acceptableVersions` field uses version-constraint syntax compatible with [Composer ranges](https://getcomposer.org/doc/articles/versions.md). Set it accurately — EspoCRM's installer rejects packages whose constraints do not match the installed version.
+</Info>
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | Yes | Human-readable extension name. Also used as the display name in the Extensions list. |
+| `version` | string | Yes | Semver version string for this release. |
+| `acceptableVersions` | array | Yes | Version constraints for compatible EspoCRM versions. |
+| `php` | string | No | Minimum required PHP version. |
+| `author` | string | No | Author name shown in the admin panel. |
+| `description` | string | No | Short description shown in the admin panel. |
+| `releaseDate` | string | No | ISO 8601 date of this release. |
+
+## Creating a custom entity
+
+Define the entity class in `Modules/MyModule/Entities/Project.php`. Extend `Espo\Core\ORM\Entity` and declare the entity type constant:
+
+```php
+<?php
+
+namespace Espo\Modules\MyModule\Entities;
+
+use Espo\Core\ORM\Entity;
+
+class Project extends Entity
+{
+    public const ENTITY_TYPE = 'Project';
+
+    public function getName(): string
+    {
+        return (string) $this->get('name');
+    }
+
+    public function getStatus(): ?string
+    {
+        return $this->get('status');
+    }
+}
+```
+
+Then add the field and link definitions to `Resources/metadata/entityDefs/Project.json`:
+
+```json
+{
+    "fields": {
+        "name": {
+            "type": "varchar",
+            "required": true,
+            "maxLength": 255
+        },
+        "status": {
+            "type": "enum",
+            "options": ["Draft", "Active", "Completed"],
+            "default": "Draft"
+        },
+        "description": {
+            "type": "text"
+        }
+    },
+    "links": {
+        "assignedUser": {
+            "type": "belongsTo",
+            "entity": "User"
+        }
+    }
+}
+```
+
+Register the entity type in `Resources/metadata/scopes/Project.json`:
+
+```json
+{
+    "entity": true,
+    "object": true,
+    "stream": true,
+    "importable": true,
+    "exportable": true
+}
+```
+
+## Creating a record service
+
+EspoCRM routes API calls for an entity type to its record service. If no custom service exists, `Espo\Core\Record\Service` is used directly. To add custom logic, extend it:
+
+```php
+<?php
+
+namespace Espo\Modules\MyModule\Services;
+
+use Espo\Core\Record\Service as BaseService;
+use Espo\Modules\MyModule\Entities\Project;
+
+/**
+ * @extends BaseService<Project>
+ */
+class Project extends BaseService
+{
+    // Override to run logic before a project is saved.
+    protected function beforeCreateEntity(Project $entity, \Espo\Core\Record\Input\Data $data): void
+    {
+        parent::beforeCreateEntity($entity, $data);
+
+        if ($entity->getStatus() === null) {
+            $entity->set('status', 'Draft');
+        }
+    }
+}
+```
+
+EspoCRM discovers the service class automatically when it matches the pattern `Espo\Modules\{ModuleName}\Services\{EntityType}`.
+
+## Adding custom API routes
+
+Create `Resources/routes.json` inside your module to register additional REST endpoints:
+
+```json
+[
+    {
+        "route": "/MyModule/Project/:id/activate",
+        "method": "POST",
+        "params": {
+            "controller": "MyModule\\Project",
+            "action": "activate"
+        }
+    }
+]
+```
+
+Then add a controller action handler in `Controllers/MyModuleProject.php`:
+
+```php
+<?php
+
+namespace Espo\Modules\MyModule\Controllers;
+
+use Espo\Core\Api\Action;
+use Espo\Core\Api\Request;
+use Espo\Core\Api\Response;
+use Espo\Core\Api\ResponseComposer;
+
+class MyModuleProject
+{
+    public function postActionActivate(Request $request, Response $response): Response
+    {
+        $id = $request->getRouteParam('id');
+
+        // ... activation logic ...
+
+        return ResponseComposer::json(true);
+    }
+}
+```
+
+## Lifecycle scripts
+
+Scripts in the `Scripts/` directory are run by `Espo\Core\Upgrades\ExtensionManager` at the appropriate phase. Each script must be a class that implements a `run` method:
+
+```php
+<?php
+
+// Scripts/AfterInstall.php
+class AfterInstall
+{
+    public function run(\Espo\Core\Container $container): void
+    {
+        // Rebuild metadata, caches, etc. after installation.
+        $dataManager = $container->getByClass(\Espo\Core\DataManager::class);
+        $dataManager->rebuild();
+    }
+}
+```
+
+The four available script names are `BeforeInstall`, `AfterInstall`, `BeforeUninstall`, and `AfterUninstall`.
+
+## Packaging and installing
+
+<Steps>
+  <Step title="Build the zip archive">
+    Zip the extension contents so that `manifest.json` is at the root of the archive (not inside a subdirectory):
+
+    ```bash
+    cd my-extension-source/
+    zip -r ../my-extension-1.0.0.zip manifest.json Files/ Scripts/
+    ```
+  </Step>
+  <Step title="Upload via the admin panel">
+    Go to **Administration → Extensions** and click **Upload**. Select your zip file and EspoCRM will validate the manifest before prompting you to install.
+  </Step>
+  <Step title="Install">
+    After uploading, click **Install** on the extension entry. EspoCRM copies the files, runs the `BeforeInstall` and `AfterInstall` scripts, and rebuilds the metadata cache.
+  </Step>
+</Steps>
+
+<Warning>
+  Always test installation on a staging instance first. The `BeforeInstall` script runs before any files are copied, so an exception there will abort the installation cleanly. An exception in `AfterInstall` leaves copied files on disk.
+</Warning>

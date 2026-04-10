@@ -1,0 +1,102 @@
+---
+title: "Kanban boards and sales pipeline in EspoCRM"
+description: "Use Kanban view to manage Opportunities and other entities by stage, drag cards between columns, track pipeline value, and customize stages in EspoCRM."
+keywords: ["kanban", "pipeline", "sales pipeline", "stages", "drag and drop", "opportunity stages", "board view", "pipeline management"]
+---
+
+EspoCRM's Kanban view turns any list of records into a visual board where columns represent stages or statuses. For Opportunities, this creates a sales pipeline board where each deal is a card you can drag from one stage to the next. Kanban is also available on other entities that have a status or stage field configured, making it a flexible way to manage any status-driven workflow.
+
+## Kanban view for Opportunities
+
+Opportunities are the primary use case for Kanban in EspoCRM. The board groups deals by their **Stage** field into columns: **Prospecting**, **Qualification**, **Proposal**, **Negotiation**, and **Closed Won**. The **Closed Lost** stage is hidden from the board by default to keep the view focused on active pipeline.
+
+To switch to Kanban view, navigate to **Opportunities** in the navigation bar and click the **Kanban** view icon in the top-right of the list (it looks like a grid of columns).
+
+### What you see on each card
+
+Each Opportunity card on the board shows:
+
+- The **Opportunity name**
+- The linked **Account** name
+- The **Amount** value
+- The **Close Date**
+- The **Assigned User** avatar
+
+### Dragging cards between stages
+
+To move an Opportunity to a different stage, click and drag the card to the target column. When you drop the card, EspoCRM updates the **Stage** field on the record immediately. The **Probability** field updates automatically based on the stage's configured probability mapping.
+
+<Note>
+  Dragging a card only changes the **Stage** field. Other fields (Amount, Close Date, etc.) are not modified. To edit additional fields, open the record.
+</Note>
+
+### Card ordering within a column
+
+Within each column, you can reorder cards by dragging them up or down. EspoCRM saves the order per user, so your preferred ordering persists across sessions without affecting how other users see the board.
+
+## Opportunity stages
+
+The default stages and their probability mappings are:
+
+| Stage | Default probability |
+|-------|-------------------|
+| Prospecting | 10% |
+| Qualification | 20% |
+| Proposal | 50% |
+| Negotiation | 80% |
+| Closed Won | 100% |
+| Closed Lost | 0% |
+
+### Customizing stages
+
+Administrators can add, remove, or rename stages through the Entity Manager:
+
+<Steps>
+  <Step title="Open the Entity Manager">
+    Go to **Admin → Entity Manager** and click on **Opportunity**.
+  </Step>
+  <Step title="Edit the Stage field">
+    In the **Fields** section, click **Edit** next to the **Stage** field.
+  </Step>
+  <Step title="Modify the options list">
+    Add new stage names, remove unused ones, or reorder them using drag-and-drop. Each stage option corresponds to a Kanban column.
+  </Step>
+  <Step title="Update the probability map">
+    Scroll to the **Probability Map** section and set the win probability for each stage. This controls what percentage is auto-filled in the **Probability** field when a stage is selected.
+  </Step>
+  <Step title="Save">
+    Click **Save**. Changes take effect immediately. New stages appear as Kanban columns the next time the board is loaded.
+  </Step>
+</Steps>
+
+<Warning>
+  Removing a stage does not change existing records that have that stage set. Those records will no longer appear in a matching column on the Kanban board. Update them before removing the stage option.
+</Warning>
+
+## Kanban on other entities
+
+Kanban is available on any entity that has a status-type field and is configured to support the view. Common examples include **Cases** (grouped by status) and **Tasks** (grouped by status). To check whether Kanban is available for an entity, look for the Kanban view icon on that entity's list view.
+
+Administrators can enable or disable Kanban for an entity in its scope metadata settings.
+
+## Pipelines
+
+EspoCRM supports named **Pipelines** — separate boards for the same entity that allow different teams or processes to use different sets of stages. A Pipeline defines its own stages (via **Pipeline Stages**), independent of the default stage field options.
+
+When a Pipeline is selected in the Kanban view, the columns change to reflect that pipeline's stages instead of the entity's default stage list. Cards are grouped by which Pipeline Stage they belong to.
+
+<Info>
+  Pipelines are configured by administrators. If your organization has multiple sales teams or processes, ask your administrator to set up separate pipelines for each.
+</Info>
+
+## Pipeline reporting
+
+The **Sales Pipeline** dashlet provides a funnel chart that visualizes open opportunity amounts across stages. You can configure it with:
+
+- A **date filter** (current year, current quarter, current month, or a custom date range) to show only opportunities closing within that period.
+- A **team filter** to scope the funnel to a specific team.
+- A **use last stage** option to chart by the furthest stage each opportunity has reached, rather than its current stage — useful for tracking momentum.
+
+Add the Sales Pipeline dashlet to your dashboard by clicking **+** on the dashboard and selecting **Sales Pipeline**.
+
+For more flexible reporting — for example, grouping total amounts by stage and month — use the [Reports feature](/features/reports-and-dashboards) to build a grid report on Opportunities.

@@ -1,0 +1,118 @@
+---
+title: 'Managing users and teams in EspoCRM'
+description: 'Create and manage internal users, portal users, and API users in EspoCRM. Covers user types, team membership, and how teams control record visibility.'
+keywords: ['users', 'teams', 'EspoCRM', 'administration', 'portal users', 'API users', 'user types', 'team membership']
+---
+
+Users and teams are the foundation of how EspoCRM controls who can log in, what they can access, and how records are shared across your organization. Before you start adding people, it helps to understand the different user types available and how teams connect to the permission system.
+
+## User types
+
+EspoCRM defines six distinct user types. Each type grants a different baseline level of access and is stored in the `type` field on the User entity.
+
+<CardGroup cols={2}>
+  <Card title="Regular" icon="user">
+    Standard internal users. Access is controlled entirely by the roles assigned to them. Most of your sales, support, and marketing staff will be Regular users.
+  </Card>
+  <Card title="Administrator" icon="user-shield">
+    Full access to all records and all administration panels. Administrators bypass role-based restrictions and can manage all system settings.
+  </Card>
+  <Card title="Portal User" icon="user-circle">
+    External contacts (customers, partners) who access a customer-facing portal. Governed by Portal Roles and restricted to data explicitly shared with the portal.
+  </Card>
+  <Card title="API User" icon="code">
+    Service accounts for machine-to-machine integration. API users authenticate with an API key or HMAC and are not meant for interactive login. They are subject to regular roles.
+  </Card>
+  <Card title="System" icon="server">
+    An internal system account used by EspoCRM itself for background processing. You cannot log in as the system user and should not modify it.
+  </Card>
+  <Card title="Super Admin" icon="crown">
+    A special elevated administrator type intended for server-level access. Super admins can manage other administrators and have unrestricted access to all system features.
+  </Card>
+</CardGroup>
+
+## User fields
+
+When creating or editing a user, the following fields are most important for administrators:
+
+| Field | Purpose |
+|-------|---------|
+| **Username** | Unique login identifier. Cannot be changed after first login by the user themselves. |
+| **First / Last Name** | Display name shown throughout the interface. |
+| **Email Address** | Used for system notifications and password resets. |
+| **Is Active** | Deactivating a user prevents login without deleting their records. |
+| **Type** | Sets the user category (see above). |
+| **Roles** | Directly assigned roles that define permissions. |
+| **Teams** | Team memberships. Determines which team-level records are visible. |
+| **Default Team** | The team used when the user creates a new record. Sets the `team` field automatically. |
+| **Title** | Job title shown in the user's profile. |
+
+## Creating a new user
+
+<Steps>
+  <Step title="Navigate to Users">
+    Go to **Administration** and click **Users** in the admin panel.
+  </Step>
+  <Step title="Click Create User">
+    Click the **Create User** button in the top right of the user list.
+  </Step>
+  <Step title="Set the user type">
+    Choose the appropriate **Type** for this person. Most internal staff should be **Regular** unless they need to administer the system.
+  </Step>
+  <Step title="Fill in required fields">
+    Enter a unique **Username**, the user's **First Name** and **Last Name**, and their **Email Address**. Email is required for password reset notifications.
+  </Step>
+  <Step title="Set a password">
+    Enter a temporary password in the **Password** field. Enable **Send Access Info** to email the credentials to the user automatically on save.
+  </Step>
+  <Step title="Assign teams and roles">
+    In the **Teams** panel, click **Select** to add the user to one or more teams. Optionally set a **Default Team**. In the **Roles** panel, assign any directly applicable roles.
+  </Step>
+  <Step title="Save the user">
+    Click **Save**. The user can now log in at your EspoCRM URL.
+  </Step>
+</Steps>
+
+## User preferences
+
+Each user has a **Preferences** record that controls their personal interface settings: date/time format, timezone, language, notification settings, and email signature. Administrators can open a user's preferences by navigating to the user record and clicking **Preferences** in the top panel. Users can edit their own preferences from the user menu in the top right corner.
+
+## API users
+
+API users authenticate via HTTP headers rather than the login form. Two authentication methods are supported:
+
+- **ApiKey** — send the key in the `X-Api-Key` header. Simple and suitable for server-side integrations in trusted environments.
+- **Hmac** — send a base64-encoded `apiKey:hash` pair in the `X-Hmac-Authorization` header where the hash is an HMAC-SHA256 signature of the HTTP method and resource path using the user's secret key. More secure for integrations exposed to untrusted networks.
+
+Set the **Auth Method** field on the API user record to `ApiKey` or `Hmac`. The system generates an API key automatically; copy it from the user detail view.
+
+## Teams
+
+Teams group users together and control record visibility. When a record is assigned to a team, every member of that team with at least `team`-level read permission can see it.
+
+Key properties of teams:
+
+- A user can belong to multiple teams.
+- A team can have one or more **Roles** attached to it, granting permissions to all team members.
+- Teams can define a list of **Positions** (e.g. `Manager`, `Agent`). When a user is added to a team, they can be given a position that affects which team-level role they inherit.
+- Each team can optionally have a **Working Time Calendar** and a **Layout Set** to customize the interface for its members.
+
+## How teams affect record visibility
+
+When a record is created by a user whose **Default Team** is set, that team is automatically associated with the record. Users who have `team`-level (not `all`-level) read permission can only see records that:
+
+1. They are the assigned user of, **or**
+2. Are associated with a team they belong to.
+
+This makes teams the primary mechanism for segmenting data across departments, regions, or product lines without creating a separate role for every access pattern.
+
+## Portal users
+
+Portal users are a special case. They do not appear in the standard **Users** list under **Administration → Users**; instead, they are managed under **Administration → Portal Users**. A portal user must be linked to a **Contact** record in the CRM and optionally to one or more **Account** records.
+
+Portal users log in through a dedicated portal URL (not the main EspoCRM URL). Their access is constrained to:
+
+- Records explicitly shared with the portal through the portal configuration.
+- Permissions granted by their **Portal Roles**.
+
+Portal roles are configured separately under **Administration → Portal Roles** and follow the same structure as regular roles.

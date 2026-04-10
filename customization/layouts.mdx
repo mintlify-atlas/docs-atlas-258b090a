@@ -1,0 +1,89 @@
+---
+title: "Customizing record layouts in EspoCRM"
+description: "Configure which fields appear on detail, edit, list, and search views for any entity using Layout Manager's drag-and-drop interface."
+keywords: ["layout manager", "detail view", "list view", "EspoCRM layouts", "custom panels"]
+---
+
+Layout Manager controls which fields and panels appear on each view of every entity in EspoCRM. Rather than editing JSON files by hand, you use a drag-and-drop interface in the admin panel to rearrange fields, add or remove them from views, and configure panels. Changes you save in Layout Manager override the defaults and are stored in the custom layer, leaving core files untouched.
+
+## Accessing Layout Manager
+
+Go to **Admin** → **Layout Manager**. Select an entity from the dropdown at the top, then select the layout type you want to edit from the list below it.
+
+## Layout types
+
+EspoCRM maintains separate layouts for each context in which a record can be displayed:
+
+| Layout type | Where it appears |
+|-------------|------------------|
+| **Detail** | The full record detail view when you open a record. |
+| **Edit** | The form shown when creating or editing a record. By default this mirrors the Detail layout. |
+| **List** | The columns shown in the list (table) view for the entity. |
+| **List (Small)** | A compact list used inside relationship panels on other records. |
+| **Search** | The filter fields available in the search/filter sidebar on the list view. |
+| **Quick Detail (Small)** | A read-only popup shown when hovering over or quick-viewing a linked record. |
+| **Quick Edit (Small)** | An inline edit popup for quick changes without opening the full record. |
+| **Detail (Side Panel)** | Fields shown in the right-hand side panel on the detail view (below the stream). |
+| **Kanban** | The fields shown on Kanban cards (for entities with Kanban view mode enabled). |
+
+## Editing a detail view layout
+
+<Steps>
+  <Step title="Open Layout Manager">
+    Go to **Admin** → **Layout Manager**. Choose your entity from the dropdown.
+  </Step>
+  <Step title="Select Detail layout">
+    Click **Detail** from the layout list on the left.
+  </Step>
+  <Step title="Drag fields into position">
+    The editor shows two areas: the layout canvas at the top and a panel of available (unused) fields at the bottom. Drag any field from the available panel into a row on the canvas. Fields are arranged in a two-column grid by default. Drag existing fields to rearrange them.
+  </Step>
+  <Step title="Manage panels">
+    The Detail view can have multiple panels (sections). Click the **+** button to add a new panel. Click the gear icon on a panel header to rename it, set the number of columns (1, 2, or 4), or mark it as collapsed by default.
+  </Step>
+  <Step title="Remove fields">
+    Drag a field back down to the available panel, or click the **×** icon on a field to remove it from the layout. Removing a field from a layout does not delete the field or its data — it only hides it from that view.
+  </Step>
+  <Step title="Save">
+    Click **Save**. The layout change takes effect immediately for all users — no cache clear is needed.
+  </Step>
+</Steps>
+
+<Tip>
+  The **Edit** layout is separate from the **Detail** layout. If you add a field to Detail but not to Edit, users will see the value on the detail view but won't have a form field to change it when editing.
+</Tip>
+
+## List view columns
+
+The **List** layout controls which columns appear in the table view and in what order. Drag columns left or right to reorder them. You can also set each column's width (in pixels or percentage) by clicking the column header in the editor.
+
+The **List (Small)** layout is shown in relationship panels — for example, when Contacts are displayed in a subpanel on an Account record. Keep this layout compact to avoid overloading the panel.
+
+## Search / filter layout
+
+The **Search** layout determines which fields appear in the filter sidebar when a user applies filters on the list view. Add fields that users commonly filter by. Date fields, enum fields, and link fields work particularly well as search filters because they support structured condition options.
+
+## Side panels and relationship panels
+
+The right-hand side panel on the detail view contains two kinds of panels:
+
+- **Side panel fields** — configured via the **Detail (Side Panel)** layout. These are additional field values displayed to the right of the main layout.
+- **Relationship panels** — subpanels that list related records (e.g., Contacts linked to an Account). These are enabled and ordered under **Relationships** in Layout Manager. You can reorder them or disable individual panels entirely.
+
+## Quick Detail and Quick Edit
+
+Quick Detail and Quick Edit layouts appear in small popup windows, typically triggered by hovering over a linked field or clicking an inline edit icon. Keep these layouts to a handful of the most important fields — the popup has limited screen space.
+
+## Layout sets for portals and teams
+
+If you have the Advanced Pack or portal feature enabled, you can create **Layout Sets** that override the standard layouts for specific portals or teams. This allows you to show a simplified detail view to portal users while giving internal users the full layout.
+
+To configure a Layout Set, go to **Admin** → **Layout Sets**, create a set, and assign it to a portal or a team. Any layout type you configure in the set overrides the default for members of that portal or team.
+
+<Note>
+  Layout Sets only override layouts for the portal or team they are assigned to. Users who are not members of a portal or the specified team see the default layouts.
+</Note>
+
+## Resetting to default
+
+Each layout type has a **Reset to Default** button in Layout Manager. Clicking it removes any customization and restores the layout shipped with EspoCRM (or the extension that defined the entity). This is useful if a layout change causes display problems.

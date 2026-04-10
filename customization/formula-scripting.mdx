@@ -1,0 +1,232 @@
+---
+title: "Automate records with EspoCRM formula scripting"
+description: "Write formula scripts to calculate field values, update related records, enforce rules on save, and trigger side effects — all from the EspoCRM admin UI."
+keywords: ["formula scripting", "calculated fields", "before-save formula", "EspoCRM automation", "formula functions"]
+---
+
+Formula is EspoCRM's built-in scripting language for automating record-level logic. You write formulas in the admin panel and EspoCRM executes them server-side at defined trigger points. Formulas can read and write field values on the current record, query related records, perform arithmetic and string manipulation, and call built-in functions that cover date math, record operations, conditional branching, and more.
+
+## Where formulas run
+
+You configure formulas per entity in **Admin** → **Entity Manager** → select an entity → **Formula**. Each entity supports multiple script slots, each with its own execution trigger:
+
+| Script slot | When it runs |
+|-------------|--------------|
+| **Before save** | Runs every time a record is saved (create or update), before the data is written to the database. Use this to compute field values, enforce business rules, or normalize data. |
+| **Before save (API only)** | Same as Before save, but runs only for saves triggered by the REST API. Useful for transformations that should not apply when an admin edits a record in the UI. |
+| **After save** | Runs after the record is successfully written. Use this for side effects such as creating related records or sending notifications. Modifications to the current record in this slot require an explicit `record\update` call. |
+| **Default values** | Runs when a new record form is opened in the UI. Sets initial field values for new records. Does not run during API creates. |
+| **Calculated fields** | Defines expressions for fields marked as calculated. These run on read (not on save) and the result is not stored in the database. |
+
+<Note>
+  The **Before save** script runs before validation. If you set a required field to an empty string in Before save, the save will still fail validation.
+</Note>
+
+## Formula syntax
+
+Formulas are written as a sequence of statements. Each statement ends with a semicolon. Statements execute top to bottom.
+
+```text
+// Assign a value to a field
+entity\setAttribute('priority', 'High');
+
+// Use an if/else block
+if (status == 'Won') {
+    entity\setAttribute('closeDate', datetime\today());
+};
+
+// Variables start with $
+$daysOpen = datetime\diff(createdAt, datetime\now(), 'days');
+entity\setAttribute('daysOpen', $daysOpen);
+```
+
+### Operators
+
+| Operator | Meaning |
+|----------|---------|
+| `==` | Equal |
+| `!=` | Not equal |
+| `>`, `<`, `>=`, `<=` | Comparison |
+| `&&` | Logical AND |
+| `\|\|` | Logical OR |
+| `!` | Logical NOT |
+| `+`, `-`, `*`, `/` | Arithmetic |
+| `%` | Modulo |
+
+### Variables
+
+Variables are declared and used with a `$` prefix:
+
+```text
+$tax = amount * 0.2;
+$total = amount + $tax;
+entity\setAttribute('totalWithTax', $total);
+```
+
+Variables are local to the formula execution and are not persisted.
+
+### Accessing field values
+
+Reference field values by name directly (without a `$` prefix and without quotes):
+
+```text
+// Read a field
+$name = name;
+
+// Read a field from a related record (link field named 'account')
+$industry = account.industry;
+```
+
+## Built-in function reference
+
+Functions are grouped by namespace, separated by a backslash (`\`). Below are the most commonly used functions.
+
+### `entity` functions
+
+These operate on the current record:
+
+| Function | Description |
+|----------|-------------|
+| `entity\attribute(name)` | Returns the current value of a field. |
+| `entity\setAttribute(name, value)` | Sets a field value on the record (writes to DB on save). |
+| `entity\attributeFetched(name)` | Returns the value as it was fetched from the DB (before any in-memory changes). |
+| `entity\isAttributeChanged(name)` | Returns `true` if the field has been changed since last save. |
+| `entity\isNew()` | Returns `true` if the record has not yet been saved. |
+| `entity\isRelated(link, id)` | Returns `true` if the linked record with the given ID is related. |
+| `entity\countRelated(link)` | Returns the number of related records through a link. |
+| `entity\sumRelated(link, field)` | Returns the sum of a field across all related records. |
+| `entity\hasLinkMultipleId(link, id)` | Returns `true` if an ID is present in a link-multiple field. |
+| `entity\addLinkMultipleId(link, id)` | Adds an ID to a link-multiple field. |
+| `entity\removeLinkMultipleId(link, id)` | Removes an ID from a link-multiple field. |
+
+### `record` functions
+
+These query and modify arbitrary records (not just the current one):
+
+| Function | Description |
+|----------|-------------|
+| `record\exists(entityType, key, value)` | Returns `true` if a matching record exists. |
+| `record\count(entityType, key, value)` | Returns the count of matching records. |
+| `record\findOne(entityType, orderBy, order, key, value)` | Returns the ID of the first matching record. |
+| `record\attribute(entityType, id, attribute)` | Fetches a specific attribute from a record. |
+| `record\create(entityType, key1, val1, ...)` | Creates a new record and returns its ID. |
+| `record\update(entityType, id, key1, val1, ...)` | Updates an existing record. |
+| `record\delete(entityType, id)` | Deletes a record. |
+| `record\relate(entityType, id, link, foreignId)` | Links two records. |
+| `record\unrelate(entityType, id, link, foreignId)` | Unlinks two records. |
+
+### `string` functions
+
+| Function | Description |
+|----------|-------------|
+| `string\concatenate(s1, s2, ...)` | Joins multiple strings together. |
+| `string\contains(haystack, needle)` | Returns `true` if `haystack` contains `needle`. |
+| `string\length(s)` | Returns the character count. |
+| `string\trim(s)` | Strips leading and trailing whitespace. |
+| `string\lowerCase(s)` | Converts to lowercase. |
+| `string\upperCase(s)` | Converts to uppercase. |
+| `string\substring(s, start, end)` | Extracts a portion of a string. |
+| `string\replace(subject, search, replace)` | Replaces all occurrences of `search` in `subject`. |
+| `string\split(s, delimiter)` | Returns an array of parts split by `delimiter`. |
+| `string\pos(haystack, needle)` | Returns the position of `needle` in `haystack` (0-indexed), or -1 if not found. |
+| `string\match(s, pattern)` | Returns the first regex match, or null. |
+| `string\pad(s, length, padString)` | Pads a string to the given length. |
+
+### `datetime` functions
+
+All datetime functions work with EspoCRM's internal date format (`YYYY-MM-DD` for dates, `YYYY-MM-DD HH:MM:SS` for datetimes in UTC).
+
+| Function | Description |
+|----------|-------------|
+| `datetime\now()` | Returns the current UTC datetime string. |
+| `datetime\today()` | Returns today's date string in the user's time zone. |
+| `datetime\addDays(date, n)` | Returns a date shifted by `n` days. |
+| `datetime\addMonths(date, n)` | Returns a date shifted by `n` months. |
+| `datetime\addYears(date, n)` | Returns a date shifted by `n` years. |
+| `datetime\addHours(datetime, n)` | Returns a datetime shifted by `n` hours. |
+| `datetime\addMinutes(datetime, n)` | Returns a datetime shifted by `n` minutes. |
+| `datetime\diff(date1, date2, unit)` | Returns the numeric difference between two dates. Units: `'days'`, `'months'`, `'years'`, `'hours'`, `'minutes'`, `'seconds'`. |
+| `datetime\format(date, format, timezone)` | Formats a date string using a PHP date format pattern. |
+| `datetime\year(date)` | Extracts the year component. |
+| `datetime\month(date)` | Extracts the month component (1–12). |
+| `datetime\dayOfWeek(date)` | Returns the day of the week (0 = Sunday). |
+| `datetime\closest(date, type, value, ...)` | Returns the nearest date matching a weekday or interval. |
+
+### `number` functions
+
+| Function | Description |
+|----------|-------------|
+| `number\abs(n)` | Absolute value. |
+| `number\round(n, precision)` | Rounds to `precision` decimal places. |
+| `number\floor(n)` | Rounds down to the nearest integer. |
+| `number\ceil(n)` | Rounds up to the nearest integer. |
+| `number\power(base, exponent)` | Raises `base` to the `exponent`. |
+| `number\randomInt(min, max)` | Returns a random integer between `min` and `max`. |
+| `number\parseInt(s)` | Parses a string as an integer. |
+| `number\parseFloat(s)` | Parses a string as a float. |
+
+### `logical` and control-flow
+
+| Function / keyword | Description |
+|--------------------|-------------|
+| `if (condition) { ... }` | Conditional block. |
+| `if (condition) { ... } else { ... }` | Conditional with else. |
+| `while (condition) { ... }` | Loop while condition is true. |
+| `break` | Exits the current loop. |
+| `continue` | Skips to the next loop iteration. |
+| `logical\and(a, b, ...)` | Returns `true` if all arguments are truthy. |
+| `logical\or(a, b, ...)` | Returns `true` if any argument is truthy. |
+| `logical\not(a)` | Negates the boolean value. |
+
+## Practical examples
+
+### Setting a calculated close-date
+
+```text
+// Before save: set closeDate to 30 days from today on newly created Won opportunities
+if (entity\isNew() && stage == 'Won') {
+    entity\setAttribute('closeDate', datetime\addDays(datetime\today(), 30));
+};
+```
+
+### Computing a full name from parts
+
+```text
+// Before save: build a formatted reference code
+$prefix = 'ORD-';
+$padded = string\pad(number, 5, '0');
+entity\setAttribute('referenceCode', string\concatenate($prefix, $padded));
+```
+
+### Updating a related record
+
+```text
+// After save: when an Opportunity is closed Won, mark the Account as a Customer
+if (stage == 'Won' && entity\isAttributeChanged('stage')) {
+    record\update('Account', accountId, 'type', 'Customer');
+};
+```
+
+### Conditional field logic
+
+```text
+// Before save: require a reason when status is set to Cancelled
+if (status == 'Cancelled' && !cancellationReason) {
+    entity\setAttribute('cancellationReason', 'Not specified');
+};
+```
+
+### Counting related records
+
+```text
+// Before save: store the number of linked contacts on the account
+$count = entity\countRelated('contacts');
+entity\setAttribute('contactCount', $count);
+```
+
+## Tips and common mistakes
+
+- **Semicolons are required** at the end of each statement, including the last one inside a block.
+- **Field names are case-sensitive** and must match the internal API name (camelCase), not the display label.
+- **`record\update` in Before save** updates another record immediately, before the current record is saved. Be careful with circular dependencies.
+- Use **Admin → Formula Sandbox** to test expressions against a real record before deploying them in Before save.

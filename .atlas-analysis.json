@@ -1,0 +1,120 @@
+{
+  "projectType": "saas",
+  "projectName": "EspoCRM",
+  "projectDescription": "EspoCRM is a free, open-source CRM platform that helps organizations manage leads, contacts, sales pipelines, marketing campaigns, and customer support in a customizable, single-page web application.",
+  "theme": "almond",
+  "primaryColor": "#f1b127",
+  "lightColor": "#c59d7b",
+  "darkColor": "#9891c5",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/crm-entities",
+              "features/email-and-calendar",
+              "features/stream-and-notifications",
+              "features/reports-and-dashboards",
+              "features/kanban-and-pipeline"
+            ]
+          },
+          {
+            "group": "Customization",
+            "pages": [
+              "customization/entity-manager",
+              "customization/field-types",
+              "customization/layouts",
+              "customization/formula-scripting",
+              "customization/dynamic-logic"
+            ]
+          },
+          {
+            "group": "Administration",
+            "pages": [
+              "administration/roles-and-permissions",
+              "administration/users-and-teams",
+              "administration/email-configuration",
+              "administration/scheduled-jobs"
+            ]
+          },
+          {
+            "group": "Developer Guide",
+            "pages": [
+              "development/architecture",
+              "development/extensions",
+              "development/hooks",
+              "development/dependency-injection"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api/overview",
+              "api/authentication"
+            ]
+          },
+          {
+            "group": "Endpoints",
+            "pages": [
+              "api/crud-operations",
+              "api/search-and-filter",
+              "api/relationships",
+              "api/stream"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Contact, Lead, and Account management",
+    "Sales pipeline with Kanban and opportunity tracking",
+    "Email integration with inbound/outbound email support",
+    "Calendar, meetings, and activity scheduling",
+    "Marketing campaigns and mass email",
+    "Customer support cases and knowledge base",
+    "Role-based access control with granular permissions",
+    "Customizable entities, fields, and layouts via Entity Manager",
+    "Formula scripting and dynamic logic for business rules",
+    "REST API with OpenAPI schema support",
+    "Webhooks for real-time event notifications",
+    "Extension/module system for custom development",
+    "Reports, dashboards, and analytics",
+    "Two-factor authentication (TOTP, email, SMS)",
+    "LDAP and OIDC authentication support"
+  ],
+  "publicApiSurface": [
+    "GET /api/v1/{EntityType} — list records",
+    "POST /api/v1/{EntityType} — create record",
+    "GET /api/v1/{EntityType}/{id} — read record",
+    "PUT /api/v1/{EntityType}/{id} — update record",
+    "DELETE /api/v1/{EntityType}/{id} — delete record",
+    "GET /api/v1/{EntityType}/{id}/{link} — list related records",
+    "POST /api/v1/{EntityType}/{id}/{link} — relate records",
+    "DELETE /api/v1/{EntityType}/{id}/{link}/{foreignId} — unrelate records",
+    "POST /api/v1/App/user — authenticate and get user info",
+    "GET /api/v1/Metadata — get application metadata",
+    "GET /api/v1/Settings — get application settings",
+    "GET /api/v1/{EntityType}/{id}/stream — get record stream",
+    "POST /api/v1/MassAction — trigger mass action",
+    "POST /api/v1/Export — export records",
+    "GET /api/v1/Webhook — list webhooks",
+    "POST /api/v1/Webhook — create webhook"
+  ]
+}

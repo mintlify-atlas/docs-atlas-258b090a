@@ -1,0 +1,107 @@
+---
+title: 'Roles and permissions in EspoCRM'
+description: 'Learn how to control what each user can see and do in EspoCRM using role-based access control, scope-level permissions, and field-level restrictions.'
+keywords: ['roles', 'permissions', 'access control', 'ACL', 'EspoCRM', 'administration', 'field-level permissions', 'portal roles']
+---
+
+EspoCRM uses a role-based access control (RBAC) system to determine what each user can see, create, edit, delete, and stream. Roles are sets of permission rules that you assign to individual users or to entire teams. Understanding how roles work is essential before you invite new users or open a portal to external contacts.
+
+## How the permission model works
+
+Every action a user takes is checked against their effective permission set. That set is assembled from all roles directly assigned to the user plus all roles assigned to any team the user belongs to. When a user has multiple roles, EspoCRM resolves conflicts by applying the **most permissive** rule — granting access if any single role permits it.
+
+<Note>
+  When a user is assigned to multiple roles (directly or through teams), the system combines them by taking the least restrictive value for each permission. If Role A grants `team` read access and Role B grants `all` read access, the effective level is `all`. There is no way to "deny" a permission by adding a second role.
+</Note>
+
+## Permission levels
+
+Roles use two categories of levels: **value permissions** that apply to cross-cutting features, and **scope-level permissions** that apply to individual entity types.
+
+### Scope-level permissions
+
+For each entity scope (Contacts, Leads, Opportunities, etc.), a role can configure five actions independently:
+
+| Action | What it controls |
+|--------|-----------------|
+| **Read** | Viewing records and their detail view |
+| **Create** | Creating new records |
+| **Edit** | Modifying existing records |
+| **Delete** | Removing records |
+| **Stream** | Following activity stream updates on records |
+
+Each action can be set to one of three levels:
+
+- **All** — the user can act on any record regardless of who owns it or which team it belongs to.
+- **Team** — the user can act only on records that belong to a team the user is a member of, or that are assigned to the user.
+- **Own** — the user can act only on records where they are the assigned user.
+- **No** — the user cannot perform this action at all.
+
+### Value permissions
+
+Value permissions govern higher-level capabilities that cut across many parts of the application:
+
+| Permission | What it allows |
+|-----------|---------------|
+| **Assignment Permission** | Assigning records to other users (`all` = any user, `team` = same-team users, `no` = only yourself) |
+| **User Permission** | Viewing other users' profiles |
+| **Export Permission** | Exporting list view data |
+| **Mass Update Permission** | Running bulk edits across multiple records |
+| **Group Email Account Permission** | Access to send from group email accounts |
+| **Portal Permission** | Creating portal users |
+| **Data Privacy Permission** | Erasing personal data fields |
+
+## Field-level permissions
+
+In addition to scope-level access, roles support **field-level security**. Within any scope you can restrict individual fields to:
+
+- **Read** — the user can see the field value.
+- **Edit** — the user can modify the field value.
+- **No** — the field is completely hidden.
+
+Field-level restrictions are additive with scope-level restrictions. If scope read is `own` and a field is set to `no`, users who can see a record still cannot see that field.
+
+## Creating a role
+
+<Steps>
+  <Step title="Open Roles">
+    In the top navigation, go to **Administration** and click **Roles** under the Users section of the admin panel.
+  </Step>
+  <Step title="Create a new role">
+    Click **Create Role**. Give the role a descriptive name such as `Sales Rep` or `Support Agent`. Optionally add a description to explain its intended use.
+  </Step>
+  <Step title="Set scope permissions">
+    Scroll through the entity list. For each entity, use the dropdown menus to set **Read**, **Create**, **Edit**, **Delete**, and **Stream** levels. Leave an action set to **not set** to inherit from other roles or apply the system default.
+  </Step>
+  <Step title="Set field-level permissions (optional)">
+    Click the **Fields** link next to any scope to expand field-level controls. Set **Read** and **Edit** to `yes` or `no` for each sensitive field.
+  </Step>
+  <Step title="Set value permissions">
+    Scroll to the **Permissions** section at the bottom of the role form. Configure Assignment Permission, Export Permission, and any others appropriate for this role.
+  </Step>
+  <Step title="Save the role">
+    Click **Save**. The role is now available to assign to users and teams.
+  </Step>
+</Steps>
+
+## Assigning roles to users
+
+You can assign a role directly to a user or indirectly through a team.
+
+**Direct assignment:** Open the user record (**Administration → Users**), scroll to the **Roles** panel, and click **Select** to add one or more roles. Direct role assignments take effect immediately without requiring the user to log out.
+
+**Team assignment:** Open a team record (**Administration → Teams**), scroll to the **Roles** panel, and add roles there. All members of the team inherit these roles in addition to any roles assigned to them directly.
+
+## Team roles
+
+Teams also support a position-based role mechanism. When a user is added to a team, you can assign them a **position** within that team (such as `Manager` or `Agent`). The team's role can then be scoped by position so that different team members get different levels of access within the same team.
+
+## Portal roles
+
+Portal roles work the same way as regular roles but apply exclusively to **Portal Users** — external contacts who log in through a customer-facing portal. Portal roles are managed separately under **Administration → Portal Roles**.
+
+Portal users can only see records that are explicitly shared with the portal, regardless of what their portal role grants. The portal role defines the ceiling of what they can do with those records. Portal roles support the same scope actions (read, create, edit, delete) but operate within the narrower context of portal-exposed data only.
+
+<Note>
+  A portal user's effective permissions are determined by portal roles assigned directly to the user and portal roles assigned to any portal they belong to, using the same most-permissive merge logic as regular roles.
+</Note>

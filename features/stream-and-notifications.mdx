@@ -1,0 +1,95 @@
+---
+title: "Activity stream and notifications in EspoCRM"
+description: "Learn how EspoCRM's record-level and global stream log changes, how to post and comment, mention users, follow records, and configure notification preferences."
+keywords: ["stream", "activity feed", "notifications", "mentions", "follow", "posts", "comments", "popup notifications", "email notifications"]
+---
+
+EspoCRM has a built-in activity stream that records what happens to each CRM record — field changes, new relationships, emails, and messages posted by users. The stream is visible directly on each record and in a global feed that aggregates activity across everything you follow. Notifications alert you in real time when something requires your attention.
+
+## Record-level stream
+
+Every record that has stream enabled (Accounts, Contacts, Leads, Opportunities, Cases, and others) shows a **Stream** panel at the bottom of its detail view. This panel displays a reverse-chronological list of activity entries called notes.
+
+### What gets logged automatically
+
+EspoCRM logs the following actions to the stream without any manual effort:
+
+- **Field changes** — when an audited field changes, a note records the old and new values. For example, changing an Opportunity's stage from **Qualification** to **Proposal** creates a stream entry showing the transition.
+- **Relationship changes** — when a related record is linked or unlinked (for example, adding a Contact to an Opportunity), a note is added.
+- **Emails** — inbound and outbound emails linked to the record appear as email notes in the stream.
+- **Meetings and Calls** — when a Meeting or Call is linked to a record as a parent, it appears in the stream.
+- **Record creation** — a creation note is logged when the record is first saved.
+
+Which fields are audited is controlled by the field metadata. Administrators can configure this in the Entity Manager.
+
+### Posts and comments
+
+Users can write freeform posts directly in the stream. Click the text box at the top of the Stream panel and type your message. Posts support basic formatting and can include file attachments.
+
+Any stream note or post can receive threaded **replies** — click **Reply** under a note to add a comment. This keeps related discussion grouped together.
+
+### Mentions
+
+To alert a specific user, type `@` followed by their name in a post or reply. EspoCRM will auto-complete matching user names. The mentioned user receives a notification (see [Notifications](#notifications) below) and the mention is highlighted in the stream entry.
+
+## Global stream
+
+The **Stream** page (accessible from the navigation bar) shows an aggregated feed of notes from all records you follow. It works like a social activity feed — your home base for staying current on what's happening across deals, accounts, and cases you care about.
+
+Use the filter controls at the top to narrow the feed by note type (posts only, updates only, emails, etc.).
+
+## Following records
+
+You follow a record to receive its stream activity in your global feed and notifications for changes.
+
+- **Auto-follow** — EspoCRM automatically adds you as a follower when you create a record or when you are assigned to a record.
+- **Manual follow** — on any record's detail view, click the **Follow** button (the star or follow icon near the record title) to subscribe. Click it again to unfollow.
+- **Collaborators** — on some entity types, users linked as team members or collaborators are automatically followed.
+
+<Info>
+  Administrators can configure which entity types support stream and auto-follow behavior. This is done in the entity scope metadata.
+</Info>
+
+## Notifications
+
+Notifications appear in the bell icon in the top-right corner of the EspoCRM interface. The counter shows how many unread notifications you have.
+
+### Types of notifications
+
+| Type | Trigger |
+|------|---------|
+| **Assignment** | A record is assigned to you or a team you belong to. |
+| **Mention in post** | Someone uses `@yourname` in a stream post or comment. |
+| **Note on followed record** | A new note is added to a record you follow. |
+| **Email reply** | A reply arrives to an email thread you are part of. |
+
+### Popup notifications
+
+For time-sensitive items like upcoming Meetings and Calls, EspoCRM shows a browser popup notification at a configurable interval before the event. You can set the reminder timing when creating or editing a Meeting or Call using the **Reminders** field.
+
+### Email notifications
+
+EspoCRM can also send email notifications for the same events. These are controlled per-user in **Profile → Notifications** (accessible from your user avatar menu).
+
+### Notification preferences
+
+To configure which notifications you receive:
+
+<Steps>
+  <Step title="Open your preferences">
+    Click your avatar in the top-right corner and select **Preferences**.
+  </Step>
+  <Step title="Go to the Notifications section">
+    Scroll to the **Notifications** section of your preferences form.
+  </Step>
+  <Step title="Adjust in-app and email settings">
+    For each notification type, you can independently enable or disable **in-app** (popup/bell) and **email** delivery. Turn off types you do not want to receive.
+  </Step>
+  <Step title="Save">
+    Click **Save**. Your preferences take effect immediately.
+  </Step>
+</Steps>
+
+<Tip>
+  If you follow a large number of records, disabling email notifications for "note on followed record" can reduce noise while still keeping in-app notifications active.
+</Tip>

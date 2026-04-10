@@ -1,0 +1,284 @@
+---
+title: "Managing record relationships via the EspoCRM API"
+description: "Reference for listing, creating, linking, and unlinking related records in EspoCRM via REST API, with curl examples for Contact, Account, and Opportunity."
+keywords: ["espocrm api", "relationships", "linked records", "relate", "unrelate", "link", "foreign records"]
+---
+
+EspoCRM represents CRM relationships — such as a Contact belonging to an Account, or an Opportunity linked to a Contact — through named links. The relationship API lets you list related records, create new records directly within a relationship, link existing records to each other, and remove those links. All relationship endpoints follow the pattern `/{EntityType}/{id}/{link}`, where `link` is the relationship name as configured in the entity's metadata.
+
+## List related records
+
+Returns a paginated list of records related to a specific parent record via the named link. This endpoint accepts the same filter, sort, and pagination parameters as the standard list endpoint.
+
+```
+GET /api/v1/{EntityType}/{id}/{link}
+```
+
+The response has the same `{ "list": [...], "total": N }` envelope as a standard list response.
+
+<Tabs>
+  <Tab title="Account → contacts">
+    List all Contacts linked to a specific Account:
+
+    ```bash
+    curl "https://your-espocrm.com/api/v1/Account/75b2c3d4e5f6a7b8c9d0e1f2/contacts?orderBy=lastName&order=ASC&maxSize=20" \
+      -H "Authorization: Basic <base64-credentials>"
+    ```
+
+    ```json
+    {
+      "total": 4,
+      "list": [
+        {
+          "id": "64a1b2c3d4e5f6a7b8c9d0e1",
+          "firstName": "Alice",
+          "lastName": "Smith",
+          "emailAddress": "alice@example.com",
+          "title": "SVP of Engineering"
+        },
+        {
+          "id": "99d4e5f6a7b8c9d0e1f2a3b4",
+          "firstName": "Carol",
+          "lastName": "White",
+          "emailAddress": "carol@example.com",
+          "title": "CTO"
+        }
+      ]
+    }
+    ```
+  </Tab>
+  <Tab title="Contact → opportunities">
+    List all Opportunities linked to a specific Contact:
+
+    ```bash
+    curl "https://your-espocrm.com/api/v1/Contact/64a1b2c3d4e5f6a7b8c9d0e1/opportunities?orderBy=amount&order=DESC" \
+      -H "Authorization: Basic <base64-credentials>"
+    ```
+
+    ```json
+    {
+      "total": 2,
+      "list": [
+        {
+          "id": "88c3d4e5f6a7b8c9d0e1f2a3",
+          "name": "Enterprise License Renewal",
+          "amount": 75000,
+          "stage": "Proposal/Price Quote",
+          "closeDate": "2026-06-30"
+        }
+      ]
+    }
+    ```
+  </Tab>
+  <Tab title="Contact → meetings">
+    List all Meetings a Contact is scheduled to attend:
+
+    ```bash
+    curl "https://your-espocrm.com/api/v1/Contact/64a1b2c3d4e5f6a7b8c9d0e1/meetings?orderBy=dateStart&order=ASC" \
+      -H "Authorization: Basic <base64-credentials>"
+    ```
+
+    ```json
+    {
+      "total": 1,
+      "list": [
+        {
+          "id": "bbc6d7e8f9a0b1c2d3e4f5a6",
+          "name": "Renewal Review Call",
+          "dateStart": "2026-05-15T14:00:00+00:00",
+          "dateEnd": "2026-05-15T15:00:00+00:00",
+          "status": "Planned"
+        }
+      ]
+    }
+    ```
+  </Tab>
+</Tabs>
+
+You can apply the same `where`, `orderBy`, `order`, `offset`, `maxSize`, `select`, and `textFilter` parameters that are available on the standard list endpoint. See [Search and filter](/api/search-and-filter) for the full syntax.
+
+---
+
+## Link an existing record
+
+Links an existing record to a parent record via the named relationship. Neither record is created or modified — only the relationship between them is established.
+
+```
+PUT /api/v1/{EntityType}/{id}/{link}
+```
+
+Send a JSON body with an `ids` array containing the IDs of records to link. You can link multiple records in a single request.
+
+<Tabs>
+  <Tab title="Link Contact → Account">
+    Add an existing Contact to an Account's `contacts` relationship:
+
+    ```bash
+    curl -X PUT "https://your-espocrm.com/api/v1/Account/75b2c3d4e5f6a7b8c9d0e1f2/contacts" \
+      -H "Authorization: Basic <base64-credentials>" \
+      -H "Content-Type: application/json" \
+      -d '{"ids": ["64a1b2c3d4e5f6a7b8c9d0e1"]}'
+    ```
+
+    ```json
+    true
+    ```
+  </Tab>
+  <Tab title="Link Contact → Opportunity">
+    Associate an existing Contact with an Opportunity:
+
+    ```bash
+    curl -X PUT "https://your-espocrm.com/api/v1/Opportunity/88c3d4e5f6a7b8c9d0e1f2a3/contacts" \
+      -H "Authorization: Basic <base64-credentials>" \
+      -H "Content-Type: application/json" \
+      -d '{"ids": ["64a1b2c3d4e5f6a7b8c9d0e1", "99d4e5f6a7b8c9d0e1f2a3b4"]}'
+    ```
+
+    ```json
+    true
+    ```
+  </Tab>
+</Tabs>
+
+<Note>
+  Only `hasMany` and `manyToMany` relationship types support linking via this endpoint. Attempting to use it on a `hasOne` or `belongsTo` relationship returns `403 Forbidden`.
+</Note>
+
+---
+
+## Create and relate a new record
+
+Creates a new record and simultaneously links it to the parent record via the named relationship. The request body contains the fields for the new record, just like a standard create request.
+
+```
+POST /api/v1/{EntityType}/{id}/{link}
+```
+
+The response is the full newly created record object.
+
+<Tabs>
+  <Tab title="Create Meeting and link to Contact">
+    Create a new Meeting and add the Contact as an attendee:
+
+    ```bash
+    curl -X POST "https://your-espocrm.com/api/v1/Contact/64a1b2c3d4e5f6a7b8c9d0e1/meetings" \
+      -H "Authorization: Basic <base64-credentials>" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "name": "Quarterly Review",
+        "dateStart": "2026-05-20T10:00:00+00:00",
+        "dateEnd": "2026-05-20T11:00:00+00:00",
+        "status": "Planned",
+        "description": "Q2 account review with Alice."
+      }'
+    ```
+
+    ```json
+    {
+      "id": "ccd7e8f9a0b1c2d3e4f5a6b7",
+      "name": "Quarterly Review",
+      "dateStart": "2026-05-20T10:00:00+00:00",
+      "dateEnd": "2026-05-20T11:00:00+00:00",
+      "status": "Planned",
+      "description": "Q2 account review with Alice.",
+      "createdAt": "2026-04-10T13:00:00+00:00",
+      "modifiedAt": "2026-04-10T13:00:00+00:00"
+    }
+    ```
+  </Tab>
+  <Tab title="Create Opportunity linked to Account">
+    Create a new Opportunity directly from an Account's relationship:
+
+    ```bash
+    curl -X POST "https://your-espocrm.com/api/v1/Account/75b2c3d4e5f6a7b8c9d0e1f2/opportunities" \
+      -H "Authorization: Basic <base64-credentials>" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "name": "Professional Services Bundle",
+        "amount": 28000,
+        "stage": "Prospecting",
+        "closeDate": "2026-12-31"
+      }'
+    ```
+
+    ```json
+    {
+      "id": "dde8f9a0b1c2d3e4f5a6b7c8",
+      "name": "Professional Services Bundle",
+      "amount": 28000,
+      "stage": "Prospecting",
+      "probability": 10,
+      "closeDate": "2026-12-31",
+      "accountId": "75b2c3d4e5f6a7b8c9d0e1f2",
+      "accountName": "Acme Corp",
+      "createdAt": "2026-04-10T13:30:00+00:00",
+      "modifiedAt": "2026-04-10T13:30:00+00:00"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Unlink (remove) a relationship
+
+Removes the relationship between the parent record and a specific related record. This does not delete either record — it only removes the link between them.
+
+```
+DELETE /api/v1/{EntityType}/{id}/{link}/{foreignId}
+```
+
+The response body is `true` on success.
+
+<Tabs>
+  <Tab title="Unlink Contact from Account">
+    Remove the link between a Contact and an Account:
+
+    ```bash
+    curl -X DELETE "https://your-espocrm.com/api/v1/Account/75b2c3d4e5f6a7b8c9d0e1f2/contacts/64a1b2c3d4e5f6a7b8c9d0e1" \
+      -H "Authorization: Basic <base64-credentials>"
+    ```
+
+    ```json
+    true
+    ```
+  </Tab>
+  <Tab title="Unlink Contact from Opportunity">
+    Remove a Contact from an Opportunity's contacts relationship:
+
+    ```bash
+    curl -X DELETE "https://your-espocrm.com/api/v1/Opportunity/88c3d4e5f6a7b8c9d0e1f2a3/contacts/64a1b2c3d4e5f6a7b8c9d0e1" \
+      -H "Authorization: Basic <base64-credentials>"
+    ```
+
+    ```json
+    true
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Common link names
+
+The table below lists frequently used relationship link names for core EspoCRM entities. Link names are always camelCase.
+
+| Entity | Link name | Related entity | Description |
+|---|---|---|---|
+| `Account` | `contacts` | `Contact` | People belonging to this account |
+| `Account` | `opportunities` | `Opportunity` | Deals linked to this account |
+| `Account` | `cases` | `Case` | Support cases for this account |
+| `Account` | `meetings` | `Meeting` | Meetings with this account |
+| `Account` | `calls` | `Call` | Calls with this account |
+| `Contact` | `opportunities` | `Opportunity` | Deals this contact is involved in |
+| `Contact` | `meetings` | `Meeting` | Meetings this contact attends |
+| `Contact` | `calls` | `Call` | Calls this contact is on |
+| `Contact` | `cases` | `Case` | Cases associated with this contact |
+| `Opportunity` | `contacts` | `Contact` | Contacts involved in this deal |
+| `Opportunity` | `meetings` | `Meeting` | Meetings for this deal |
+| `Lead` | `meetings` | `Meeting` | Meetings with this lead |
+| `Case` | `contacts` | `Contact` | Contacts on this support case |
+
+<Tip>
+  To discover the link names available for any entity on your instance, call `GET /api/v1/{EntityType}/action/getDuplicateAttributes` or inspect the OpenAPI schema at `GET /api/v1/OpenApi`.
+</Tip>

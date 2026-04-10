@@ -1,0 +1,322 @@
+---
+title: "Stream and activity feed endpoints in EspoCRM"
+description: "Reference for the EspoCRM stream API: fetch the global feed, read record activity, post notes, follow and unfollow records, with curl examples."
+keywords: ["espocrm api", "stream", "activity feed", "note", "post", "follow", "subscription", "stream entries"]
+---
+
+The EspoCRM stream is the activity feed that tracks everything that happens to a record — posts and comments from users, field changes, related record creation, email activity, and assignment changes. Every record that has stream enabled maintains its own timeline. Users can also follow records to receive notifications about activity. The stream API gives you programmatic access to read, write, and manage all of this.
+
+## Get the current user's stream
+
+Returns the stream feed for the currently authenticated user — an aggregated timeline of activity across all records the user follows or owns.
+
+```
+GET /api/v1/Stream
+```
+
+<ParamField query="offset" type="number" default="0">
+  Number of entries to skip. Use with `maxSize` for pagination.
+</ParamField>
+
+<ParamField query="maxSize" type="number" default="20">
+  Maximum number of stream entries to return.
+</ParamField>
+
+<ParamField query="after" type="string">
+  ISO 8601 datetime string. Returns only entries created after this timestamp. Useful for polling for new activity.
+</ParamField>
+
+<ParamField query="filter" type="string">
+  Filter by note type. Pass a primary filter name, for example `posts` to return only user-posted notes.
+</ParamField>
+
+```bash
+curl "https://your-espocrm.com/api/v1/Stream?maxSize=10&orderBy=createdAt&order=DESC" \
+  -H "Authorization: Basic <base64-credentials>"
+```
+
+```json
+{
+  "total": 87,
+  "list": [
+    {
+      "id": "eef9a0b1c2d3e4f5a6b7c8d9",
+      "type": "Post",
+      "post": "Spoke with Alice — she confirmed budget approval.",
+      "parentType": "Opportunity",
+      "parentId": "88c3d4e5f6a7b8c9d0e1f2a3",
+      "parentName": "Enterprise License Renewal",
+      "createdAt": "2026-04-10T14:00:00+00:00",
+      "createdById": "a1b2c3d4e5f6a7b8c9d0e1f2",
+      "createdByName": "Bob Jones",
+      "data": {}
+    },
+    {
+      "id": "ffa0b1c2d3e4f5a6b7c8d9e0",
+      "type": "Update",
+      "parentType": "Contact",
+      "parentId": "64a1b2c3d4e5f6a7b8c9d0e1",
+      "parentName": "Alice Smith",
+      "createdAt": "2026-04-10T12:00:00+00:00",
+      "createdById": "a1b2c3d4e5f6a7b8c9d0e1f2",
+      "createdByName": "Bob Jones",
+      "data": {
+        "fields": ["title"],
+        "attributes": {
+          "was": { "title": "VP of Engineering" },
+          "became": { "title": "SVP of Engineering" }
+        }
+      }
+    }
+  ]
+}
+```
+
+---
+
+## Get a record's stream
+
+Returns the activity feed for a specific record. This includes all note types: user posts, field updates, related record creation, email activity, and assignment changes.
+
+```
+GET /api/v1/{EntityType}/{id}/stream
+```
+
+<ParamField query="offset" type="number" default="0">
+  Number of entries to skip.
+</ParamField>
+
+<ParamField query="maxSize" type="number" default="20">
+  Maximum number of stream entries to return.
+</ParamField>
+
+<ParamField query="after" type="string">
+  ISO 8601 datetime string. Returns only entries created after this timestamp.
+</ParamField>
+
+<ParamField query="filter" type="string">
+  Filter by category. Use `posts` to return only user-posted notes and comments.
+</ParamField>
+
+```bash
+curl "https://your-espocrm.com/api/v1/Opportunity/88c3d4e5f6a7b8c9d0e1f2a3/stream?maxSize=20" \
+  -H "Authorization: Basic <base64-credentials>"
+```
+
+```json
+{
+  "total": 5,
+  "list": [
+    {
+      "id": "eef9a0b1c2d3e4f5a6b7c8d9",
+      "type": "Post",
+      "post": "Spoke with Alice — she confirmed budget approval.",
+      "parentType": "Opportunity",
+      "parentId": "88c3d4e5f6a7b8c9d0e1f2a3",
+      "parentName": "Enterprise License Renewal",
+      "createdAt": "2026-04-10T14:00:00+00:00",
+      "createdById": "a1b2c3d4e5f6a7b8c9d0e1f2",
+      "createdByName": "Bob Jones",
+      "data": {}
+    }
+  ],
+  "pinnedList": []
+}
+```
+
+<ResponseField name="total" type="number" required>
+  Total count of stream entries for this record.
+</ResponseField>
+
+<ResponseField name="list" type="object[]" required>
+  Array of stream entry (Note) objects.
+
+  <Expandable title="Stream entry fields">
+    <ResponseField name="id" type="string" required>
+      Unique ID of the stream entry.
+    </ResponseField>
+    <ResponseField name="type" type="string" required>
+      The type of stream entry. See the note types table below.
+    </ResponseField>
+    <ResponseField name="post" type="string">
+      The post content. Present only when `type` is `Post`.
+    </ResponseField>
+    <ResponseField name="parentType" type="string">
+      The entity type of the record this entry belongs to, e.g. `Opportunity`.
+    </ResponseField>
+    <ResponseField name="parentId" type="string">
+      The ID of the record this entry belongs to.
+    </ResponseField>
+    <ResponseField name="parentName" type="string">
+      The display name of the parent record.
+    </ResponseField>
+    <ResponseField name="createdAt" type="string" required>
+      ISO 8601 timestamp of when the entry was created.
+    </ResponseField>
+    <ResponseField name="createdById" type="string" required>
+      ID of the user who created the entry.
+    </ResponseField>
+    <ResponseField name="createdByName" type="string" required>
+      Display name of the user who created the entry.
+    </ResponseField>
+    <ResponseField name="data" type="object">
+      Additional structured data that varies by note type. For `Update` entries this contains `fields`, `attributes.was`, and `attributes.became`. For assignment changes it includes the assigned user details.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="pinnedList" type="object[]">
+  Array of pinned stream entries for the record, ordered newest first.
+</ResponseField>
+
+---
+
+## Stream note types
+
+Each stream entry has a `type` that identifies what happened.
+
+| Type | Description |
+|---|---|
+| `Post` | A user-authored post or comment |
+| `Update` | One or more fields on the record were changed |
+| `Create` | The record was created |
+| `CreateRelated` | A related record was created via this record |
+| `Relate` | An existing record was linked to this record |
+| `Unrelate` | A record was unlinked from this record |
+| `Assign` | The record was assigned to a different user or team |
+| `EmailReceived` | An inbound email was logged against the record |
+| `EmailSent` | An outbound email was sent from the record |
+
+---
+
+## Post a note to a record
+
+Creates a new `Post` type stream entry (a comment or note) on a record. This corresponds to what users do when they write in the record's stream panel.
+
+```
+POST /api/v1/Note
+```
+
+Send the post content along with the parent record reference in the request body.
+
+```bash
+curl -X POST "https://your-espocrm.com/api/v1/Note" \
+  -H "Authorization: Basic <base64-credentials>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "post": "Called Alice to follow up on the proposal. She expects a decision by EOD Friday.",
+    "parentType": "Opportunity",
+    "parentId": "88c3d4e5f6a7b8c9d0e1f2a3",
+    "type": "Post"
+  }'
+```
+
+```json
+{
+  "id": "aab1c2d3e4f5a6b7c8d9e0f1",
+  "type": "Post",
+  "post": "Called Alice to follow up on the proposal. She expects a decision by EOD Friday.",
+  "parentType": "Opportunity",
+  "parentId": "88c3d4e5f6a7b8c9d0e1f2a3",
+  "parentName": "Enterprise License Renewal",
+  "createdAt": "2026-04-10T15:00:00+00:00",
+  "createdById": "a1b2c3d4e5f6a7b8c9d0e1f2",
+  "createdByName": "Bob Jones",
+  "data": {}
+}
+```
+
+<Note>
+  The `parentType` must exactly match the entity type name (PascalCase), and `parentId` must be a valid record ID. The stream permission on the record's entity type must be granted to your API user.
+</Note>
+
+---
+
+## Follow a record
+
+Subscribes the current user to a record's stream. After following, the user will receive in-app notifications for stream activity on that record.
+
+```
+PUT /api/v1/{EntityType}/{id}/subscription
+```
+
+The response body is `true` on success.
+
+```bash
+curl -X PUT "https://your-espocrm.com/api/v1/Opportunity/88c3d4e5f6a7b8c9d0e1f2a3/subscription" \
+  -H "Authorization: Basic <base64-credentials>"
+```
+
+```json
+true
+```
+
+---
+
+## Unfollow a record
+
+Removes the current user's subscription to a record's stream. The user will no longer receive notifications for that record.
+
+```
+DELETE /api/v1/{EntityType}/{id}/subscription
+```
+
+The response body is `true` on success.
+
+```bash
+curl -X DELETE "https://your-espocrm.com/api/v1/Opportunity/88c3d4e5f6a7b8c9d0e1f2a3/subscription" \
+  -H "Authorization: Basic <base64-credentials>"
+```
+
+```json
+true
+```
+
+---
+
+## Get followers of a record
+
+Returns the list of users who follow a record.
+
+```
+GET /api/v1/{EntityType}/{id}/followers
+```
+
+```bash
+curl "https://your-espocrm.com/api/v1/Opportunity/88c3d4e5f6a7b8c9d0e1f2a3/followers" \
+  -H "Authorization: Basic <base64-credentials>"
+```
+
+```json
+{
+  "total": 2,
+  "list": [
+    {
+      "id": "a1b2c3d4e5f6a7b8c9d0e1f2",
+      "name": "Bob Jones",
+      "emailAddress": "bob@example.com"
+    },
+    {
+      "id": "b2c3d4e5f6a7b8c9d0e1f2a3",
+      "name": "Carol White",
+      "emailAddress": "carol@example.com"
+    }
+  ]
+}
+```
+
+---
+
+## Filtering stream entries by time
+
+Use the `after` query parameter to poll for new stream entries since a known point in time. This is useful for integrations that need to react to CRM activity in near real-time.
+
+```bash
+# Get Opportunity stream entries created after a specific timestamp
+curl "https://your-espocrm.com/api/v1/Opportunity/88c3d4e5f6a7b8c9d0e1f2a3/stream?after=2026-04-10T12%3A00%3A00%2B00%3A00" \
+  -H "Authorization: Basic <base64-credentials>"
+```
+
+<Tip>
+  Store the `createdAt` of the most recent entry you received and pass it as `after` in the next poll. This avoids refetching entries you have already processed.
+</Tip>

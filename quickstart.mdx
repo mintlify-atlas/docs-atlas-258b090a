@@ -1,80 +1,197 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: "Get started with EspoCRM"
+description: "Log in for the first time, navigate the interface, and create your first Contact, Account, Opportunity, and the relationships between them."
+keywords: ["quickstart", "first login", "contact", "account", "opportunity", "relationship", "CRM"]
 ---
 
-## Get started in three steps
-
-Get your documentation site running locally and make your first customization.
-
-### Step 1: Set up your local environment
-
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
+Once EspoCRM is installed, you can be up and running with real data in under ten minutes. This guide walks you through your first login, a tour of the interface, and creating the three core record types — a Contact, an Account, and an Opportunity — then linking them together the way a real sales workflow would.
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+If you haven't installed EspoCRM yet, start with the [Installation guide](/installation) first.
 </Note>
+
+## First login
+
+<Steps>
+  <Step title="Open EspoCRM in your browser">
+    Navigate to the URL where EspoCRM is hosted — for example, `http://your-domain.com` or `http://localhost:8080` for Docker installs.
+
+    You will see the login screen.
+  </Step>
+
+  <Step title="Sign in with the admin account">
+    Enter the administrator username and password you set during installation, then click **Login**.
+
+    <Tip>
+    The default admin username is `admin` unless you changed it during installation. If you used the Docker Compose example from the installation guide, the credentials are whatever you set in `ESPOCRM_ADMIN_USERNAME` and `ESPOCRM_ADMIN_PASSWORD`.
+    </Tip>
+  </Step>
+
+  <Step title="Get familiar with the dashboard">
+    After login, you land on the **Dashboard**. By default it shows two panels: **Activities** (upcoming meetings and calls) and **Stream** (a feed of recent record changes).
+
+    The top navigation bar contains:
+
+    - The **hamburger menu** (three lines, top left) — opens the full navigation sidebar with all modules
+    - The **tab bar** — quick access to Accounts, Contacts, Leads, Opportunities, Emails, and more
+    - The **plus (+) icon** — creates a new record in any module without leaving the current screen
+    - The **search icon** — global search across all entities
+    - The **bell icon** — in-app notifications
+
+    <Note>
+    The tab bar shows the most commonly used modules by default. You can customize which tabs appear by going to your user menu (top right corner) → **Profile** → **Layout** → **Tab List**.
+    </Note>
+  </Step>
+</Steps>
+
+## Create a Contact
+
+Contacts represent individual people — customers, prospects, or anyone you interact with personally.
+
+<Steps>
+  <Step title="Open the Contacts module">
+    Click **Contacts** in the tab bar at the top of the screen.
+  </Step>
+
+  <Step title="Start a new Contact record">
+    Click the **Create Contact** button in the top right of the Contacts list view.
+
+    A detail form opens.
+  </Step>
+
+  <Step title="Fill in the contact details">
+    Enter the following fields:
+
+    - **First Name** and **Last Name** — required
+    - **Email Address** — used for sending emails directly from EspoCRM
+    - **Phone** — can store multiple numbers with types (Mobile, Office, etc.)
+    - **Title** — the person's job title
+
+    For this walkthrough, create a contact named **Jane Smith** with an email address and a phone number.
+  </Step>
+
+  <Step title="Save the record">
+    Click **Save** in the top right corner of the form.
+
+    You are taken to Jane Smith's Contact detail view. From here you can log calls, schedule meetings, and see a full activity history in the **Stream** panel at the bottom.
+  </Step>
+</Steps>
+
+## Create an Account
+
+Accounts represent companies or organizations. Contacts are usually linked to Accounts to model the relationship between a person and their employer.
+
+<Steps>
+  <Step title="Open the Accounts module">
+    Click **Accounts** in the tab bar.
+  </Step>
+
+  <Step title="Start a new Account record">
+    Click **Create Account** in the top right.
+  </Step>
+
+  <Step title="Fill in the account details">
+    Enter:
+
+    - **Name** — the company name (required)
+    - **Website** — the company URL
+    - **Phone** — main company phone number
+    - **Billing Address** — street, city, country
+
+    For this walkthrough, create an account named **Acme Corp**.
+  </Step>
+
+  <Step title="Save the record">
+    Click **Save**.
+
+    You are taken to Acme Corp's Account detail view.
+  </Step>
+</Steps>
+
+## Link the Contact to the Account
+
+Now connect Jane Smith to Acme Corp so the relationship is visible from both records.
+
+<Steps>
+  <Step title="Go back to Jane Smith's Contact record">
+    Click **Contacts** in the tab bar, then click **Jane Smith** in the list.
+  </Step>
+
+  <Step title="Set the Account field">
+    In the detail view, find the **Account** field (it appears in the main panel, usually below the name fields). Click the pencil (edit) icon next to it, or click **Edit** at the top of the record.
+
+    In the **Account Name** field, start typing `Acme` and select **Acme Corp** from the autocomplete dropdown.
+  </Step>
+
+  <Step title="Save">
+    Click **Save**.
+
+    Jane Smith's record now shows Acme Corp as her account. On the Acme Corp Account record, Jane will appear in the **Contacts** panel at the bottom.
+  </Step>
+</Steps>
+
+## Create an Opportunity
+
+Opportunities track potential sales deals. They connect to both a Contact (the person you're talking to) and an Account (the company the deal is with).
+
+<Steps>
+  <Step title="Open the Opportunities module">
+    Click **Opportunities** in the tab bar.
+
+    <Tip>
+    If you don't see Opportunities in the tab bar, click the hamburger menu on the left and look for it there, or use the global search.
+    </Tip>
+  </Step>
+
+  <Step title="Start a new Opportunity record">
+    Click **Create Opportunity** in the top right.
+  </Step>
+
+  <Step title="Fill in the opportunity details">
+    Enter:
+
+    - **Name** — a descriptive name for the deal (required), e.g., `Acme Corp - Initial Contract`
+    - **Account Name** — type `Acme` and select **Acme Corp**
+    - **Close Date** — the expected date the deal will close (required)
+    - **Stage** — the current stage in your sales pipeline. The default stages are: `Prospecting`, `Qualification`, `Needs Analysis`, `Value Proposition`, `Id. Decision Makers`, `Perception Analysis`, `Proposal/Price Quote`, `Negotiation/Review`, `Closed Won`, `Closed Lost`
+    - **Amount** — the expected deal value
+    - **Probability (%)** — automatically set based on Stage, but you can override it
+  </Step>
+
+  <Step title="Save the record">
+    Click **Save**.
+
+    You are taken to the Opportunity detail view. You will see Acme Corp listed as the Account.
+  </Step>
+
+  <Step title="Link the Contact to the Opportunity">
+    Scroll down to the **Contacts** panel at the bottom of the Opportunity record.
+
+    Click **Select** (or the link icon) in the Contacts panel header, search for **Jane Smith**, and select her.
+
+    Jane Smith now appears in the Contacts panel of this Opportunity. From her Contact record, you can also see this Opportunity listed in her **Opportunities** panel.
+  </Step>
+</Steps>
+
+## What you have now
+
+After completing this guide, you have:
+
+- A **Contact** (Jane Smith) representing an individual person
+- An **Account** (Acme Corp) representing the company she works for
+- An **Opportunity** (Acme Corp - Initial Contract) representing a potential deal, linked to both
+
+<CardGroup cols={2}>
+  <Card title="Core features" icon="star" href="/features/crm-entities">
+    Learn more about Accounts, Contacts, Leads, Cases, and how entities relate to each other
+  </Card>
+  <Card title="Email and calendar" icon="envelope" href="/features/email-and-calendar">
+    Connect your email account and start logging communications directly from records
+  </Card>
+  <Card title="Reports and dashboards" icon="chart-bar" href="/features/reports-and-dashboards">
+    Build reports across your records and pin them to the dashboard
+  </Card>
+  <Card title="Customization" icon="sliders" href="/customization/entity-manager">
+    Add custom fields, create new entity types, and tailor layouts to your workflow
+  </Card>
+</CardGroup>

@@ -1,0 +1,213 @@
+---
+title: 'Using hooks to react to record events in EspoCRM'
+description: 'A complete guide to EspoCRM hooks: available hook types, file locations, discovery, ordering, and PHP examples for BeforeSave, AfterSave, AfterRelate, and more.'
+keywords: ['espocrm', 'hooks', 'beforesave', 'aftersave', 'afterremove', 'afterrelate', 'hook interfaces', 'record events', 'php']
+---
+
+Hooks let you run PHP code in response to record lifecycle events — when a record is saved, removed, or linked to another record — without modifying core classes. EspoCRM discovers hook classes by scanning well-known directories, instantiates them through the DI container, and calls the appropriate method. Because hooks are constructed by `InjectableFactory`, they support full constructor injection.
+
+## Available hook types
+
+Each hook type corresponds to an interface in `Espo\Core\Hook\Hook\`. Implement one or more of these interfaces on a single class to handle multiple events.
+
+| Interface | Method | When it fires |
+|---|---|---|
+| `BeforeSave` | `beforeSave(Entity, SaveOptions)` | Before the INSERT or UPDATE query runs |
+| `AfterSave` | `afterSave(Entity, SaveOptions)` | After the INSERT or UPDATE query runs, within the same transaction |
+| `LateAfterSave` | `lateAfterSave(Entity, SaveOptions)` | After the transaction completes (since 10.0.0) |
+| `BeforeRemove` | `beforeRemove(Entity, RemoveOptions)` | Before the DELETE query runs |
+| `AfterRemove` | `afterRemove(Entity, RemoveOptions)` | After the DELETE query runs, within the same transaction |
+| `LateAfterRemove` | `lateAfterRemove(Entity, RemoveOptions)` | After the transaction completes (since 10.0.0) |
+| `AfterRelate` | `afterRelate(Entity, string, Entity, array, RelateOptions)` | After two records are linked |
+| `AfterUnrelate` | `afterUnrelate(Entity, string, Entity, UnrelateOptions)` | After two records are unlinked |
+| `AfterMassRelate` | `afterMassRelate(Entity, string, Select, array, MassRelateOptions)` | After a mass-relate operation |
+
+Use `LateAfterSave` or `LateAfterRemove` when your hook sends external HTTP requests or performs work that must not roll back if the database transaction fails.
+
+## Hook file locations
+
+`Espo\Core\HookManager` scans these directories in the following order (later paths take precedence):
+
+```text
+custom/Espo/Custom/Hooks/{EntityType}/     ← highest priority
+custom/Espo/Modules/{ModuleName}/Hooks/{EntityType}/
+application/Espo/Hooks/{EntityType}/       ← lowest priority
+```
+
+Place hooks that apply to every entity type in a `Common/` subdirectory:
+
+```text
+custom/Espo/Custom/Hooks/Common/MyHook.php
+```
+
+A file at `custom/Espo/Custom/Hooks/Contact/StatusAudit.php` will run only for `Contact` records.
+
+## Hook discovery and ordering
+
+`HookManager` discovers hooks by scanning each directory for PHP files and inspecting the public methods of each class. Any public method whose name is not in the ignore list (`__construct`, `getDependencyList`, `inject`) and does not start with `set` is treated as a hook method.
+
+To control execution order when multiple hooks fire for the same event, declare a static `$order` property on your class. The default order is `9`. Hooks with lower numbers run first.
+
+```php
+class MyHook implements AfterSave
+{
+    public static int $order = 5; // runs before order-9 hooks
+    // ...
+}
+```
+
+## Method signatures
+
+The exact interface definitions from the source:
+
+```php
+// Espo\Core\Hook\Hook\BeforeSave
+public function beforeSave(Entity $entity, SaveOptions $options): void;
+
+// Espo\Core\Hook\Hook\AfterSave
+public function afterSave(Entity $entity, SaveOptions $options): void;
+
+// Espo\Core\Hook\Hook\LateAfterSave  (since 10.0.0)
+public function lateAfterSave(Entity $entity, SaveOptions $options): void;
+
+// Espo\Core\Hook\Hook\BeforeRemove
+public function beforeRemove(Entity $entity, RemoveOptions $options): void;
+
+// Espo\Core\Hook\Hook\AfterRemove
+public function afterRemove(Entity $entity, RemoveOptions $options): void;
+
+// Espo\Core\Hook\Hook\LateAfterRemove  (since 10.0.0)
+public function lateAfterRemove(Entity $entity, RemoveOptions $options): void;
+
+// Espo\Core\Hook\Hook\AfterRelate
+public function afterRelate(
+    Entity $entity,
+    string $relationName,
+    Entity $relatedEntity,
+    array $columnData,
+    RelateOptions $options
+): void;
+
+// Espo\Core\Hook\Hook\AfterUnrelate
+public function afterUnrelate(
+    Entity $entity,
+    string $relationName,
+    Entity $relatedEntity,
+    UnrelateOptions $options
+): void;
+
+// Espo\Core\Hook\Hook\AfterMassRelate
+public function afterMassRelate(
+    Entity $entity,
+    string $relationName,
+    Select $query,
+    array $columnData,
+    MassRelateOptions $options
+): void;
+```
+
+### The options objects
+
+`SaveOptions`, `RemoveOptions`, `RelateOptions`, and `UnrelateOptions` wrap a key-value bag passed from the caller. Use `$options->get(string $key)` to read values. The most common option key is `SaveOption::SILENT` (from `Espo\Core\ORM\Repository\Option\SaveOption`), which signals that the save should not trigger notifications or stream entries.
+
+To check whether an entity is being created for the first time inside `AfterSave`, use the save context from the options (`getContext()` is available since EspoCRM 10.0.0):
+
+```php
+$context = $options->getContext();
+
+if ($context->isNew()) {
+    // Entity was just created.
+}
+```
+
+## Complete example: AfterSave hook on Contact
+
+The following hook fires after any `Contact` record is saved. If the contact's status changed to `Active`, it sets a custom `activatedAt` date field and saves silently so the hook does not trigger itself recursively.
+
+Create the file at `custom/Espo/Custom/Hooks/Contact/ActivationTracker.php`:
+
+```php
+<?php
+
+namespace Espo\Custom\Hooks\Contact;
+
+use Espo\Core\Hook\Hook\AfterSave;
+use Espo\Core\ORM\Repository\Option\SaveOption;
+use Espo\ORM\Entity;
+use Espo\ORM\EntityManager;
+use Espo\ORM\Repository\Option\SaveOptions;
+
+class ActivationTracker implements AfterSave
+{
+    public static int $order = 10;
+
+    public function __construct(
+        private EntityManager $entityManager,
+    ) {}
+
+    public function afterSave(Entity $entity, SaveOptions $options): void
+    {
+        // Do not react to silent saves to prevent infinite loops.
+        if ($options->get(SaveOption::SILENT)) {
+            return;
+        }
+
+        $previousStatus = $entity->getFetched('status');
+        $currentStatus  = $entity->get('status');
+
+        if ($previousStatus === $currentStatus) {
+            return;
+        }
+
+        if ($currentStatus !== 'Active') {
+            return;
+        }
+
+        $entity->set('activatedAt', date('Y-m-d H:i:s'));
+
+        $this->entityManager->saveEntity($entity, [
+            SaveOption::SILENT => true,
+        ]);
+    }
+}
+```
+
+<Note>
+  Always pass `SaveOption::SILENT => true` when saving from within a hook to prevent the hook from triggering itself again in an infinite loop.
+</Note>
+
+## Example: AfterRelate hook
+
+This hook runs whenever any record gains a relation and logs which relation was linked:
+
+```php
+<?php
+
+namespace Espo\Custom\Hooks\Common;
+
+use Espo\Core\Hook\Hook\AfterRelate;
+use Espo\Core\Utils\Log;
+use Espo\ORM\Entity;
+use Espo\ORM\Repository\Option\RelateOptions;
+
+class RelationLogger implements AfterRelate
+{
+    public function __construct(private Log $log) {}
+
+    public function afterRelate(
+        Entity $entity,
+        string $relationName,
+        Entity $relatedEntity,
+        array $columnData,
+        RelateOptions $options
+    ): void {
+        $this->log->debug(
+            "Relation '{$relationName}' created: " .
+            "{$entity->getEntityType()}({$entity->getId()}) → " .
+            "{$relatedEntity->getEntityType()}({$relatedEntity->getId()})"
+        );
+    }
+}
+```
+
+Because this file is under `Common/`, it fires for every entity type, not just one.

@@ -1,0 +1,119 @@
+---
+title: "Email integration and calendar in EspoCRM"
+description: "Set up personal and group email accounts, send from CRM records, use email templates, convert emails to cases, and manage your calendar inside EspoCRM."
+keywords: ["email", "IMAP", "SMTP", "email templates", "email-to-case", "calendar", "meetings", "calls", "activity tracking", "group email inbox"]
+---
+
+EspoCRM has full email integration built in. You can connect your personal mailbox via IMAP to read and send emails directly inside the CRM, set up group inboxes that your team shares, link emails automatically to CRM records, and convert inbound emails into support cases. The calendar brings Meetings and Calls into a day, week, or month view alongside tasks and activities.
+
+## Personal email accounts
+
+A personal email account connects your individual mailbox to EspoCRM using IMAP (for receiving) and SMTP (for sending). Emails fetched via IMAP are stored inside EspoCRM and matched to existing Contacts, Leads, and Accounts by email address.
+
+### Setting up a personal email account
+
+<Steps>
+  <Step title="Open Email Account settings">
+    Click your user avatar in the top-right corner and select **Email Accounts**. Then click **Create Email Account**.
+  </Step>
+  <Step title="Enter IMAP details">
+    Fill in the **Email Address**, **IMAP Host**, **Port**, **Security** (SSL/TLS or STARTTLS), **Username**, and **Password**. Click **Test Connection** to verify the settings before saving.
+  </Step>
+  <Step title="Configure SMTP for sending">
+    Enable the **SMTP** section and enter the outgoing mail server details. You can use the same credentials as IMAP, or configure a separate SMTP host. Set **From Name** and **From Address** as they should appear to recipients.
+  </Step>
+  <Step title="Set fetch options">
+    Choose which folder to monitor (usually **INBOX**), the **Fetch Since** date to control how far back EspoCRM imports, and whether to keep emails in the source folder or move them after import.
+  </Step>
+  <Step title="Save">
+    Click **Save**. EspoCRM will begin fetching emails from your mailbox on a scheduled basis (typically every few minutes).
+  </Step>
+</Steps>
+
+<Tip>
+  If you use Gmail or Outlook, you may need to enable IMAP in your mailbox settings and create an app password if two-factor authentication is active.
+</Tip>
+
+## Group email inboxes
+
+A group email inbox (called an **Inbound Email** in EspoCRM) is a shared mailbox that multiple team members can access. Emails arriving at the group address are visible to everyone with access and can be assigned to specific users.
+
+Group inboxes support:
+- **Round-robin assignment** — automatically assign incoming emails to team members in turn.
+- **Email-to-Case** — automatically create a Case for each new email thread.
+- **Reply-from-group** — send replies using the group email address.
+
+Administrators configure group inboxes under **Admin → Inbound Emails**.
+
+## How emails link to CRM records
+
+When EspoCRM fetches an email, it looks at the **From**, **To**, **CC**, and **BCC** addresses and tries to match them against existing Contact, Lead, and Account records by email address. If a match is found, the email appears in the **Emails** related panel on those records.
+
+You can also manually link an email to any record by opening the email and clicking **Set Parent**, then selecting the record type and record you want to associate it with.
+
+<Info>
+  The parent relationship controls which record's stream shows the email activity. Setting a parent to an Opportunity, for example, makes the email visible on that Opportunity's activity feed.
+</Info>
+
+## Composing and sending emails
+
+To compose an email from inside EspoCRM:
+
+1. Click the **Compose** button in the Email section of the navigation bar, or use the **+** button in any record's **Emails** panel.
+2. The **To** field auto-completes from your Contacts and Leads.
+3. Choose a **From** address — your personal email account or a group inbox if you have access.
+4. Optionally, select an **Email Template** to pre-fill the subject and body.
+5. Click **Send** or **Save Draft** to save for later.
+
+Sent emails appear in your **Sent** folder inside EspoCRM and in the related panels of any matched records.
+
+## Email templates
+
+Email templates let you pre-define reusable subject lines and body text. Templates support placeholders that are replaced with data from the linked record when the email is composed. For example, `{Account.name}` inserts the account name.
+
+To create a template, go to **Emails → Templates** and click **Create Email Template**. Set the **Name**, **Subject**, and **Body** using the rich text editor. You can insert field placeholders using the variable picker in the toolbar.
+
+## Email-to-case
+
+When email-to-case is enabled on a group inbox, every new email thread that arrives at that address automatically creates a Case. The email subject becomes the Case name, and the sender is matched to a Contact or Lead.
+
+Subsequent replies in the same thread are appended to the Case as new emails in the related panel. If a support agent replies to the Case from within EspoCRM, the reply goes out through the group email address and is threaded with the original conversation.
+
+To enable email-to-case on a group inbox, administrators set the **Create Case** option when configuring the Inbound Email record.
+
+## Calendar
+
+The **Calendar** view shows your scheduled Meetings, Calls, and Tasks in a visual calendar. Access it from the **Calendar** item in the navigation bar.
+
+### Calendar views
+
+| View | Description |
+|------|-------------|
+| **Day** | All activities for a single day in hourly time slots. |
+| **Week** | A seven-day grid, helpful for planning the week ahead. |
+| **Month** | A full month grid showing activity counts per day. |
+| **Timeline** | A horizontal timeline view across selected users (useful for managers). |
+
+Use the arrow buttons to navigate between periods or click **Today** to jump to the current date.
+
+### Creating activities from the calendar
+
+Click any empty time slot to create a new Meeting or Call starting at that time. A quick-create form opens where you can set the subject, duration, and attendees without leaving the calendar view.
+
+### Scheduling meetings and calls
+
+Meetings and Calls record who is involved and their acceptance status:
+
+- **Invitees** — add internal users, Contacts, and Leads to the meeting.
+- **Acceptance status** — each invitee has a status of None, Accepted, Tentative, or Declined.
+- **Reminders** — set popup or email reminders for yourself and other users at a specified time before the meeting.
+
+When you create a Meeting with invitees, EspoCRM can send them invitation emails with an ICS calendar attachment. Invitees can accept or decline directly from the email.
+
+### Activity tracking
+
+All Meetings, Calls, and Tasks linked to a CRM record appear in the **Activities** section of that record's detail view. Once a Meeting or Call is marked **Held**, it moves to the **History** panel. This gives you a chronological view of all interactions with a contact or account without having to search separately.
+
+<Tip>
+  Use the **Log Call** button on a Contact or Account to quickly create a held Call record without going through the full form — useful for logging calls after they happen.
+</Tip>

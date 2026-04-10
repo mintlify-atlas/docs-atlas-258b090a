@@ -1,0 +1,99 @@
+---
+title: "Create and customize entities with Entity Manager"
+description: "Use Entity Manager to create custom record types, add fields, define relationships, and control entity-level options — all without writing code."
+keywords: ["entity manager", "custom entities", "fields", "relationships", "EspoCRM admin"]
+---
+
+Entity Manager is the central tool for shaping the data model of your EspoCRM instance. From here you can create entirely new record types, add or remove fields on any customizable entity, wire entities together with relationships, and toggle options like stream activity and disabled status. All changes are written to the custom metadata layer and do not modify core files.
+
+## Accessing Entity Manager
+
+Go to **Admin** → **Entity Manager**. The page lists every entity in the system. Entities marked with a wrench icon are customizable. Click an entity name to edit it, or click **Create Entity** to add a new one.
+
+## Entity types
+
+When creating a new entity you choose a template type. Each type pre-configures a set of fields, layouts, and behaviors.
+
+| Type | Description |
+|------|-------------|
+| **Regular** | A plain record type with no person-specific fields. Use for things like Projects, Assets, or Service Items. |
+| **Person** | Adds First Name, Last Name, Salutation, and account linking. Use for Contacts, Leads, or individuals. |
+| **Company** | Adds a Name field and address fields suited to organizations. |
+| **Base** | A minimal template with only the core system fields (ID, created at, modified at, assigned user). |
+| **Base Plus** | Like Base but includes Teams, Assigned User, and the stream panel. |
+
+## Creating a new entity
+
+<Steps>
+  <Step title="Open Entity Manager">
+    Go to **Admin** → **Entity Manager** and click **Create Entity**.
+  </Step>
+  <Step title="Enter a name">
+    Type a singular name for the entity (e.g. `ServiceRequest`). EspoCRM automatically adds a `c` prefix to distinguish custom entities (the stored name becomes `cServiceRequest`). Names must start with an uppercase letter and contain only letters and numbers.
+  </Step>
+  <Step title="Choose a type">
+    Select one of the template types described above. The type controls which fields and panels are available by default.
+  </Step>
+  <Step title="Set labels and options">
+    Provide a **Singular Label** and **Plural Label** for the UI. Enable **Stream** if users should be able to post notes, log calls, and see change history on records of this type. Check **Disabled** to hide the entity from the navigation until you are ready to deploy it.
+  </Step>
+  <Step title="Save and rebuild">
+    Click **Save**. EspoCRM writes the metadata and layout files to `custom/Espo/Custom/` and triggers a rebuild so the new entity is immediately available. A database table is created automatically on rebuild.
+  </Step>
+</Steps>
+
+<Note>
+  Custom entity names are prefixed with `c` by default. The database table name follows the same convention (e.g. `c_service_request`).
+</Note>
+
+## Editing an existing entity
+
+Click any entity name in **Entity Manager** to open its settings panel. For customizable entities you can change the labels, stream setting, disabled status, status field, sort field and direction, and Kanban view mode. Non-custom (core) entities also allow these settings but cannot be deleted.
+
+Click **Save** to apply changes. Most changes take effect after the cache is cleared; changing the **Optimistic Concurrency Control** setting triggers a full rebuild.
+
+## Managing fields
+
+Inside an entity's page, click **Fields** to see all fields. Each row shows the field name, type, and whether it is a system field or custom field.
+
+### Adding a field
+
+Click **Add Field**, select a field type, enter a name and label, configure any type-specific options, and click **Save**. The field is added to the entity's metadata. To make it visible on records, you also need to add it to a layout in **Layout Manager**.
+
+When you save a new field, EspoCRM adds the corresponding column to the database table during the next rebuild (or immediately for certain types). The column type is determined by the field type — for example, a `varchar` field creates a `VARCHAR` column, an `int` field creates an `INT` column, and a `currency` field creates two columns (amount and currency code).
+
+### Removing a field
+
+Click the **Remove** link on a custom field. EspoCRM removes the field from metadata. The database column is **not** automatically dropped to prevent accidental data loss. If you need to reclaim the column, you must drop it manually from the database after confirming no data in it is needed.
+
+<Warning>
+  System fields (such as `name`, `assignedUser`, `createdAt`) cannot be removed. Only custom fields — those you added — can be deleted.
+</Warning>
+
+## Defining relationships
+
+Click **Relationships** inside an entity to see all existing links and add new ones. EspoCRM supports five relationship types:
+
+| Relationship type | Description |
+|-------------------|-------------|
+| **One-to-many** | One record of entity A can be linked to many records of entity B. A foreign-key column is added to entity B. |
+| **Many-to-many** | Records on both sides can be linked to multiple records on the other side. A junction table is created. |
+| **One-to-one** | Each record of entity A is linked to at most one record of entity B, and vice versa. |
+| **Many-to-one** | Many records of entity A point to one record of entity B. A foreign-key column is added to entity A. |
+| **Parent-type** | Links a record to a parent that may be one of several entity types (a polymorphic link). Used for the `parent` field common in Activities. |
+
+After saving a relationship, EspoCRM creates the necessary database structures on rebuild and adds default link panels to both entities' layouts.
+
+## Entity options
+
+The following options are available in the entity settings panel:
+
+| Option | Effect |
+|--------|--------|
+| **Disabled** | Hides the entity from navigation menus and prevents access. Useful during setup. |
+| **Stream** | Enables the stream panel on records, allowing posts, calls, meetings, and change log entries. |
+| **Status field** | Designates which enum field represents the record's stage. Used by Kanban view and workflow conditions. |
+| **Sort by / Sort direction** | Sets the default sort column and order for list views of this entity. |
+| **Full-text search** | Enables full-text indexing for text fields on this entity, improving search performance on large data sets. |
+| **Kanban view mode** | Activates a Kanban board view using the designated status field. |
+| **Color / Icon** | Sets a color swatch and icon class displayed next to the entity name in the UI. |

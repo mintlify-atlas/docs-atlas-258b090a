@@ -1,0 +1,115 @@
+---
+title: 'Configure email for inbound and outbound in EspoCRM'
+description: 'Set up SMTP for sending, IMAP group inboxes for shared email, email-to-case rules, email filters, and how EspoCRM matches messages to CRM records.'
+keywords: ['email', 'SMTP', 'IMAP', 'inbound email', 'outbound email', 'group inbox', 'email configuration', 'EspoCRM', 'administration']
+---
+
+EspoCRM handles both outbound email (sending notifications, replies, and mass emails) and inbound email (fetching messages into shared group inboxes and personal mailboxes). Setting up email correctly lets your team work out of the CRM rather than switching between it and a separate mail client, and enables automatic features like email-to-case conversion and record matching by sender address.
+
+## Outbound email (SMTP)
+
+Outbound email is configured system-wide under **Administration → Outbound Emails**. This SMTP server is used for system notifications (password resets, workflow alerts), mass email campaigns, and as the default sender when a user has no personal email account configured.
+
+### Configuring the system SMTP server
+
+<Steps>
+  <Step title="Open Outbound Emails">
+    Go to **Administration** and click **Outbound Emails** under the Messaging section.
+  </Step>
+  <Step title="Set the From address">
+    Enter the default **From Name** and **From Email Address**. This appears as the sender for all system-generated emails.
+  </Step>
+  <Step title="Choose SMTP">
+    Set **Email Transport** to `SMTP`.
+  </Step>
+  <Step title="Enter server details">
+    Fill in the **SMTP Host** (e.g. `smtp.yourdomain.com`), **SMTP Port** (typically `587` for TLS or `465` for SSL), and **SMTP Security** (`TLS` or `SSL`). Enable **SMTP Auth** and enter your **SMTP Username** and **SMTP Password**.
+  </Step>
+  <Step title="Send a test email">
+    Click **Send Test Email** and enter a recipient address. If delivery succeeds, click **Save**.
+  </Step>
+</Steps>
+
+Individual users can configure their own personal SMTP settings under **Profile → Email Accounts** so that replies go out from their personal address rather than the system address.
+
+## Group email accounts (inbound email)
+
+Group email accounts — called **Inbound Emails** in EspoCRM — are shared mailboxes that multiple team members monitor together. All fetched emails appear in the group's inbox inside EspoCRM and can be assigned, replied to, and linked to CRM records.
+
+<Warning>
+  Store IMAP credentials carefully. EspoCRM saves the mailbox password in the database. Use a dedicated CRM mailbox rather than a personal or admin account, and restrict that account's permissions to the minimum needed (IMAP access and sending). Rotate the password periodically and update the EspoCRM record to match.
+</Warning>
+
+### Setting up a group inbox with IMAP
+
+<Steps>
+  <Step title="Open Group Email Accounts">
+    Go to **Administration** and click **Group Email Accounts** in the Messaging section.
+  </Step>
+  <Step title="Create a new account">
+    Click **Create Group Email Account**. Enter a human-readable **Name** (e.g. `Support Inbox`) and the **Email Address** for the mailbox (e.g. `support@yourdomain.com`).
+  </Step>
+  <Step title="Enable IMAP fetching">
+    Check **Use IMAP**. Enter the **Host**, **Port** (default `993`), **Security** (`SSL` or `TLS`), **Username**, and **Password** for the IMAP mailbox.
+  </Step>
+  <Step title="Choose monitored folders">
+    In **Monitored Folders**, confirm that `INBOX` is listed. Add additional folder names if you want EspoCRM to fetch from subfolders.
+  </Step>
+  <Step title="Set the fetch date">
+    Set **Fetch Since** to the date from which EspoCRM should start importing emails. Emails before this date will not be fetched.
+  </Step>
+  <Step title="Assign a team">
+    Set the **Team** field so that fetched emails are visible to the right group of users. You can also set **Add All Team Users** to automatically assign all team members as followers on each imported email.
+  </Step>
+  <Step title="Configure outbound SMTP (optional)">
+    Check **Use SMTP** and fill in the outbound server details if you want users to reply to emails using this mailbox address. Enabling **SMTP Is Shared** makes this SMTP account available to all users who have `groupEmailAccount` permission.
+  </Step>
+  <Step title="Save and verify">
+    Click **Save**. EspoCRM will attempt its first fetch on the next scheduled job run (every 2 minutes by default). Check the email list view to confirm messages are appearing.
+  </Step>
+</Steps>
+
+## How EspoCRM matches emails to records
+
+When EspoCRM fetches an email, it tries to link it to existing CRM records automatically. The matching process checks:
+
+1. **From address** — compared against the email address field on **Contact**, **Lead**, and **Account** records. If a match is found, the email is linked to that record.
+2. **To / CC addresses** — also checked against Contact, Lead, and Account records.
+3. **Reply-To thread** — if the email is a reply to a message EspoCRM already sent or tracked, it is attached to the same thread and its linked records.
+
+When multiple records share the same email address, EspoCRM links to all of them. If no match is found, the email is stored as an unlinked message in the group inbox.
+
+## Email-to-case
+
+Group email accounts support automatic case creation. When **Create Case** is enabled on an inbound email account, every new fetched email creates a **Case** record automatically.
+
+The case distribution modes are:
+
+| Mode | Behavior |
+|------|---------|
+| **Direct Assignment** | The case is assigned directly to the user specified in **Assign To User**. |
+| **Round-Robin** | Cases are distributed evenly among users with the specified position in the assigned team, cycling through them in order. |
+| **Least-Busy** | The case is assigned to the team member who currently has the fewest open cases. |
+
+You can also enable **Reply** to send an automatic acknowledgement email to the contact when a case is created. Configure the reply template and the **Reply From Address** on the inbound email record.
+
+## Personal email accounts
+
+Individual users can connect their own IMAP mailboxes under their user profile (**Profile → Email Accounts**). Personal accounts work like group accounts for fetching, but fetched emails are visible only to that user. The personal account can also provide a personal SMTP server for outbound sending.
+
+Personal email accounts are governed by the `EmailAccount` entity. By default, each user can manage their own account (read and edit at `own` level), and administrators cannot view other users' email account passwords.
+
+## Email filters
+
+Email filters let you skip, assign, or route incoming messages based on header conditions (From, To, Subject, body content). Filters are configured under **Administration → Email Filters** and can be applied globally or scoped to a specific group email account.
+
+A filter can:
+- **Skip** — drop the email entirely so it never appears in EspoCRM.
+- **Mark as Read** — import the email but mark it read immediately.
+- **Set Assignment** — override the auto-assignment with a specific user or team.
+
+## Email templates
+
+System email templates for workflow notifications, case auto-replies, and other automated messages are managed under **Administration → Email Templates**. Templates support dynamic variables using curly-brace syntax (`{attribute}`) and can include HTML formatting.
+
+For system-level notification messages (new user welcome, password reset), the template source is in **Administration → Template Manager**.

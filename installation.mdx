@@ -1,0 +1,347 @@
+---
+title: "Install EspoCRM on your server"
+description: "Step-by-step instructions for deploying EspoCRM manually, via install script, or with Docker. Covers PHP, MySQL, MariaDB, and PostgreSQL requirements."
+keywords: ["installation", "setup", "docker", "php", "mysql", "mariadb", "postgresql", "server"]
+---
+
+EspoCRM is a web application that runs on your own server. You can install it manually by uploading files and running the browser-based wizard, use a shell script that automates the setup, or run it in Docker. This guide covers all three approaches and the system requirements for each.
+
+<Note>
+EspoCRM requires **PHP 8.3–8.5** and one of: **MySQL 8.0+**, **MariaDB 10.3+**, or **PostgreSQL 15+**. Make sure your server meets these requirements before you begin.
+</Note>
+
+## System requirements
+
+### PHP
+
+| Requirement | Value |
+|---|---|
+| PHP version | 8.3 – 8.5 |
+| Required extensions | `json`, `openssl`, `mbstring`, `zip`, `gd`, `iconv` |
+| Recommended extensions | `curl`, `xml`, `xmlwriter`, `exif`, `bcmath` |
+
+The installer automatically checks your PHP version and extensions during setup. Required extensions must be enabled; recommended extensions are optional but improve functionality.
+
+**Recommended PHP settings:**
+
+| Setting | Minimum |
+|---|---|
+| `max_execution_time` | 180 |
+| `max_input_time` | 180 |
+| `memory_limit` | 256M |
+| `post_max_size` | 20M |
+| `upload_max_filesize` | 20M |
+
+### Database
+
+| Database | Minimum version |
+|---|---|
+| MySQL | 8.0 |
+| MariaDB | 10.3 |
+| PostgreSQL | 15 |
+
+### Web server
+
+EspoCRM works with Apache 2.4+ and Nginx. Apache requires `mod_rewrite` to be enabled and `AllowOverride All` set for the EspoCRM directory. See the web server configuration sections below.
+
+## Installation methods
+
+<Tabs>
+  <Tab title="Manual">
+
+Manual installation involves downloading the EspoCRM archive, uploading it to your server, and running the browser-based installer.
+
+<Steps>
+  <Step title="Download EspoCRM">
+    Download the latest release archive from the [EspoCRM website](https://www.espocrm.com/download/) or from the [GitHub releases page](https://github.com/espocrm/espocrm/releases).
+
+    You will get a `.zip` file such as `EspoCRM-x.x.x.zip`.
+  </Step>
+
+  <Step title="Upload and extract files">
+    Upload the archive to your web server's document root (for example, `/var/www/html/espocrm`) and extract it:
+
+    ```bash
+    unzip EspoCRM-x.x.x.zip -d /var/www/html/espocrm
+    ```
+
+    The extracted directory should contain `public/`, `application/`, `install/`, and other directories.
+  </Step>
+
+  <Step title="Set file permissions">
+    The web server user needs write access to several directories. Run the following commands, replacing `www-data` with your actual web server user:
+
+    ```bash
+    chown -R www-data:www-data /var/www/html/espocrm
+    find /var/www/html/espocrm -type f -exec chmod 644 {} +
+    find /var/www/html/espocrm -type d -exec chmod 755 {} +
+    ```
+
+    <Warning>
+    Incorrect permissions are the most common cause of installation failures. If you see permission errors during installation, revisit this step.
+    </Warning>
+  </Step>
+
+  <Step title="Configure your web server">
+
+    <Tabs>
+      <Tab title="Apache">
+        Enable `mod_rewrite` and restart Apache:
+
+        ```bash
+        sudo a2enmod rewrite
+        sudo service apache2 restart
+        ```
+
+        In your virtual host config (e.g., `/etc/apache2/sites-available/espocrm.conf`), set `AllowOverride All` for the EspoCRM directory:
+
+        ```apacheconf
+        <Directory /var/www/html/espocrm/>
+            AllowOverride All
+        </Directory>
+        ```
+
+        After editing the config, restart Apache again.
+      </Tab>
+      <Tab title="Nginx">
+        Add the following to your Nginx site config (e.g., `/etc/nginx/sites-available/espocrm`):
+
+        ```nginx
+        server {
+            # ...
+
+            client_max_body_size 50M;
+
+            location / {
+                try_files $uri $uri/ /index.php?$query_string;
+            }
+
+            location /api/v1/ {
+                if (!-e $request_filename){
+                    rewrite ^/api/v1/(.*)$ /api/v1/index.php last; break;
+                }
+            }
+
+            location /portal/ {
+                try_files $uri $uri/ /portal/index.php?$query_string;
+            }
+
+            location /api/v1/portal-access {
+                if (!-e $request_filename){
+                    rewrite ^/api/v1/(.*)$ /api/v1/portal-access/index.php last; break;
+                }
+            }
+
+            location ~ /reset/?$ {
+                try_files /reset.html =404;
+            }
+
+            location ^~ (api|client)/ {
+                if (-e $request_filename){
+                    return 403;
+                }
+            }
+            location ^~ /data/ { deny all; }
+            location ^~ /application/ { deny all; }
+            location ^~ /custom/ { deny all; }
+            location ^~ /vendor/ { deny all; }
+            location ~ /\.ht { deny all; }
+        }
+        ```
+
+        Reload Nginx after saving:
+
+        ```bash
+        sudo nginx -t && sudo service nginx reload
+        ```
+      </Tab>
+    </Tabs>
+
+  </Step>
+
+  <Step title="Create a database">
+    Create a dedicated database and user for EspoCRM. The following example uses MySQL; adjust the syntax for MariaDB or PostgreSQL as needed.
+
+    ```sql
+    CREATE DATABASE espocrm CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    CREATE USER 'espocrm'@'localhost' IDENTIFIED BY 'your-secure-password';
+    GRANT ALL PRIVILEGES ON espocrm.* TO 'espocrm'@'localhost';
+    FLUSH PRIVILEGES;
+    ```
+  </Step>
+
+  <Step title="Run the web installer">
+    Open your browser and navigate to `http://your-domain.com/espocrm`. You will see the EspoCRM installation wizard.
+
+    Work through each step:
+
+    1. **License agreement** — Read and accept the GNU AGPLv3 license.
+    2. **System requirements check** — The wizard checks your PHP version, extensions, and file permissions. Resolve any errors before continuing.
+    3. **Database configuration** — Enter your database platform (MySQL, MariaDB, or PostgreSQL), host, database name, username, and password. Use **Test Connection** to verify the settings.
+    4. **Admin account** — Set your administrator username and password.
+    5. **Preferences** — Choose your default language, date/time format, time zone, and currency.
+    6. **Email settings** — Optionally configure outbound SMTP settings. You can skip this and configure email later from the admin panel.
+
+    After completing all steps, click **Next** and EspoCRM will build the database schema and finalize the installation.
+  </Step>
+
+  <Step title="Configure cron">
+    EspoCRM uses cron jobs for scheduled tasks such as sending emails and running reports. Add the following to your crontab (run `crontab -e` as the web server user):
+
+    ```bash
+    * * * * * /usr/bin/php /var/www/html/espocrm/cron.php > /dev/null 2>&1
+    ```
+
+    <Tip>
+    After installation, the final screen of the installer shows the exact cron command configured for your installation path.
+    </Tip>
+  </Step>
+</Steps>
+
+  </Tab>
+  <Tab title="Script">
+
+The installation script automates server setup, dependency checks, and EspoCRM deployment. It is suitable for clean Ubuntu or Debian servers.
+
+<Warning>
+Run the script on a fresh server. It installs and configures system packages including PHP, a web server, and a database. Running it on an existing production server may overwrite configurations.
+</Warning>
+
+<Steps>
+  <Step title="Download and run the script">
+    Fetch the official installation script and run it as root:
+
+    ```bash
+    wget https://github.com/espocrm/espocrm-installer/releases/latest/download/install.sh
+    bash install.sh
+    ```
+
+    The script prompts you for a domain name and whether to use Let's Encrypt for TLS. It then installs PHP, a web server, a database, and EspoCRM, and runs the database schema build automatically.
+  </Step>
+
+  <Step title="Follow the prompts">
+    Provide the requested information:
+
+    - Your domain or IP address
+    - Whether to enable HTTPS (requires a valid domain with DNS pointing to the server)
+    - Database credentials (generated automatically or entered manually)
+  </Step>
+
+  <Step title="Complete setup in the browser">
+    After the script finishes, open `http://your-domain.com` (or the HTTPS equivalent) and complete the remaining installation wizard steps to set your admin password and preferences.
+  </Step>
+</Steps>
+
+  </Tab>
+  <Tab title="Docker">
+
+Docker is the fastest way to run EspoCRM locally or in a containerized environment. The official image is available on Docker Hub as `espocrm/espocrm`.
+
+<Steps>
+  <Step title="Run with Docker Compose (recommended)">
+    Create a `docker-compose.yml` file:
+
+    ```yaml
+    version: "3"
+
+    services:
+      espocrm-db:
+        image: mysql:8.0
+        environment:
+          MYSQL_ROOT_PASSWORD: root_password
+          MYSQL_DATABASE: espocrm
+          MYSQL_USER: espocrm
+          MYSQL_PASSWORD: espocrm_password
+        volumes:
+          - espocrm-db:/var/lib/mysql
+        restart: unless-stopped
+
+      espocrm:
+        image: espocrm/espocrm
+        environment:
+          ESPOCRM_DATABASE_PLATFORM: Mysql
+          ESPOCRM_DATABASE_HOST: espocrm-db
+          ESPOCRM_DATABASE_NAME: espocrm
+          ESPOCRM_DATABASE_USER: espocrm
+          ESPOCRM_DATABASE_PASSWORD: espocrm_password
+          ESPOCRM_ADMIN_USERNAME: admin
+          ESPOCRM_ADMIN_PASSWORD: admin_password
+          ESPOCRM_SITE_URL: "http://localhost:8080"
+        volumes:
+          - espocrm-data:/var/www/html/data
+        ports:
+          - "8080:80"
+        restart: unless-stopped
+        depends_on:
+          - espocrm-db
+
+      espocrm-daemon:
+        image: espocrm/espocrm
+        volumes:
+          - espocrm-data:/var/www/html/data
+        entrypoint: docker-daemon.sh
+        restart: unless-stopped
+        depends_on:
+          - espocrm
+
+    volumes:
+      espocrm-db:
+      espocrm-data:
+    ```
+
+    Start the stack:
+
+    ```bash
+    docker compose up -d
+    ```
+
+    EspoCRM will be available at `http://localhost:8080`. Log in with the admin credentials you set in `ESPOCRM_ADMIN_USERNAME` and `ESPOCRM_ADMIN_PASSWORD`.
+  </Step>
+
+  <Step title="Run a single container (quick test)">
+    For a quick local test without Docker Compose, you can run EspoCRM against a separately started MySQL container:
+
+    ```bash
+    docker run -d \
+      --name espocrm-db \
+      -e MYSQL_ROOT_PASSWORD=root_password \
+      -e MYSQL_DATABASE=espocrm \
+      -e MYSQL_USER=espocrm \
+      -e MYSQL_PASSWORD=espocrm_password \
+      mysql:8.0
+
+    docker run -d \
+      --name espocrm \
+      --link espocrm-db:mysql \
+      -e ESPOCRM_DATABASE_HOST=espocrm-db \
+      -e ESPOCRM_DATABASE_NAME=espocrm \
+      -e ESPOCRM_DATABASE_USER=espocrm \
+      -e ESPOCRM_DATABASE_PASSWORD=espocrm_password \
+      -e ESPOCRM_ADMIN_USERNAME=admin \
+      -e ESPOCRM_ADMIN_PASSWORD=admin_password \
+      -e ESPOCRM_SITE_URL="http://localhost:8080" \
+      -p 8080:80 \
+      espocrm/espocrm
+    ```
+  </Step>
+
+  <Step title="Persist data">
+    The Docker Compose example above uses named volumes (`espocrm-data` and `espocrm-db`) to persist your data across container restarts. If you remove or recreate containers without these volume mounts, you will lose your data.
+
+    <Warning>
+    Never remove the `espocrm-data` volume without first backing up your data directory and database.
+    </Warning>
+  </Step>
+</Steps>
+
+  </Tab>
+</Tabs>
+
+## Post-installation checklist
+
+After completing the installation, verify the following:
+
+- **Cron is configured** — Check **Admin → Scheduled Jobs** to confirm jobs are running. If cron is not set up, you will see a warning in the admin panel.
+- **Email is configured** — Go to **Admin → Outbound Emails** to add your SMTP settings if you skipped this during installation.
+- **Site URL is correct** — Check **Admin → Settings** and confirm the **Site URL** field matches how users will access the system. An incorrect URL breaks links in email notifications.
+- **File permissions are correct** — If you see warnings about unwritable directories, re-run the `chmod`/`chown` commands from the manual installation steps.

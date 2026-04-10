@@ -1,0 +1,209 @@
+---
+title: 'Dependency injection and the service container'
+description: 'How EspoCRM resolves constructor dependencies via type-hints, how to bind interfaces to implementations, and how to use contextual binding per consumer.'
+keywords: ['espocrm', 'dependency injection', 'di container', 'injectablefactory', 'binding', 'service container', 'php', 'constructor injection']
+---
+
+EspoCRM uses a two-layer dependency injection system. A PSR-11-compatible service container (`Espo\Core\Container`) holds long-lived singleton services, and `Espo\Core\InjectableFactory` creates transient objects by reading constructor type-hints and resolving each parameter from the container or by constructing it on the fly. No annotations or attributes are required: type-hints alone drive resolution.
+
+## How the container works
+
+`Container` loads services lazily. When you ask for a service by name or class, the container checks its internal cache; if the service is not yet initialised it calls the registered loader or uses `InjectableFactory` to create it. Services are instantiated only once and reused on subsequent calls.
+
+```php
+use Espo\Core\Container;
+use Espo\Core\Utils\Config;
+use Espo\ORM\EntityManager;
+
+// Retrieve a service by class (preferred)
+$config        = $container->getByClass(Config::class);
+$entityManager = $container->getByClass(EntityManager::class);
+```
+
+In practice, you will rarely hold a reference to the container directly. Prefer declaring your dependencies in the constructor instead.
+
+## Constructor injection
+
+`InjectableFactory` inspects the constructor of any class you ask it to create. For each typed parameter it tries to resolve the dependency in this order:
+
+1. An explicit `$with` value passed to `createWith()`.
+2. A binding rule in the active `BindingContainer`.
+3. A container service whose name matches the parameter name **and** whose type is compatible.
+4. Recursive instantiation via `InjectableFactory` itself.
+
+This means a class with only typed constructor parameters is automatically injectable:
+
+```php
+<?php
+
+namespace Espo\Modules\MyModule\Services;
+
+use Espo\Core\Utils\Config;
+use Espo\Core\Utils\Log;
+use Espo\ORM\EntityManager;
+
+class ProjectReporter
+{
+    public function __construct(
+        private EntityManager $entityManager,
+        private Config $config,
+        private Log $log,
+    ) {}
+
+    public function generateReport(string $projectId): array
+    {
+        // $this->entityManager, $this->config, and $this->log are
+        // all injected automatically — no wiring code needed.
+        $project = $this->entityManager->getEntityById('Project', $projectId);
+        // ...
+    }
+}
+```
+
+To create an instance yourself, call `InjectableFactory::create()`:
+
+```php
+use Espo\Core\InjectableFactory;
+use Espo\Modules\MyModule\Services\ProjectReporter;
+
+class MyController
+{
+    public function __construct(private InjectableFactory $injectableFactory) {}
+
+    public function doSomething(): void
+    {
+        $reporter = $this->injectableFactory->create(ProjectReporter::class);
+        // ...
+    }
+}
+```
+
+## Binding interfaces to implementations
+
+When a constructor parameter is typed to an interface, the container cannot instantiate it directly. You must register a binding in a `Binding.php` file that implements `Espo\Core\Binding\BindingProcessor`.
+
+EspoCRM loads binding files from (in ascending priority order):
+
+1. `application/Espo/Binding.php` — core bindings
+2. `custom/Espo/Modules/{ModuleName}/Binding.php` — module bindings
+3. `custom/Espo/Custom/Binding.php` — customization bindings
+
+A binding class receives a `Binder` and calls one of its fluent methods:
+
+```php
+<?php
+
+namespace Espo\Custom;
+
+use Espo\Core\Binding\Binder;
+use Espo\Core\Binding\BindingProcessor;
+use Espo\Modules\MyModule\Contracts\NotifierInterface;
+use Espo\Modules\MyModule\Services\EmailNotifier;
+
+class Binding implements BindingProcessor
+{
+    public function process(Binder $binder): void
+    {
+        // Bind an interface to a concrete implementation class.
+        $binder->bindImplementation(
+            NotifierInterface::class,
+            EmailNotifier::class,
+        );
+    }
+}
+```
+
+### Available binding methods
+
+| Method | What it does |
+|---|---|
+| `bindImplementation(interface, className)` | Instantiate `className` whenever `interface` is requested. |
+| `bindService(interface, serviceName)` | Resolve `interface` to the named container service. |
+| `bindInstance(interface, $object)` | Always return the given object instance. |
+| `bindCallback(interface, Closure)` | Call a closure to produce the value; the closure's own parameters are also auto-injected. |
+| `bindFactory(interface, factoryClassName)` | Instantiate `factoryClassName` and call `create()` on it. |
+
+## Contextual binding
+
+Sometimes two consumers of the same interface need different implementations. Use `Binder::for()` to create a `ContextualBinder` scoped to a specific consuming class:
+
+```php
+<?php
+
+namespace Espo\Custom;
+
+use Espo\Core\Binding\Binder;
+use Espo\Core\Binding\BindingProcessor;
+use Espo\Core\Mail\Account\Fetcher;
+use Espo\Core\Mail\Account\PersonalAccount\FetcherFactory as PersonalFetcherFactory;
+use Espo\Core\Mail\Account\GroupAccount\FetcherFactory as GroupFetcherFactory;
+use Espo\Core\Mail\Account\PersonalAccount\Service as PersonalService;
+use Espo\Core\Mail\Account\GroupAccount\Service as GroupService;
+
+class Binding implements BindingProcessor
+{
+    public function process(Binder $binder): void
+    {
+        // PersonalService gets a personal-account fetcher.
+        $binder
+            ->for(PersonalService::class)
+            ->bindFactory(Fetcher::class, PersonalFetcherFactory::class);
+
+        // GroupService gets a group-account fetcher.
+        $binder
+            ->for(GroupService::class)
+            ->bindFactory(Fetcher::class, GroupFetcherFactory::class);
+    }
+}
+```
+
+The `->for(ClassName::class)` chain returns a `ContextualBinder` that supports the same `bindImplementation`, `bindService`, `bindInstance`, `bindCallback`, and `bindFactory` methods, plus `bindValue` for injecting scalar parameters by name.
+
+## Binding a scalar parameter by name
+
+Use `bindValue` on a `ContextualBinder` to inject a primitive value for a specific constructor parameter:
+
+```php
+use Espo\Core\Binding\Key\NamedKey;
+
+$binder
+    ->for(MyService::class)
+    ->bindValue(NamedKey::create('timeout'), 30);
+```
+
+`NamedKey::create('timeout')` matches the parameter `$timeout` in `MyService`'s constructor.
+
+## Accessing the container directly
+
+Most code should use constructor injection. When you genuinely need the container — for example, in a lifecycle script or a service locator pattern — you can inject `Espo\Core\Container` directly:
+
+```php
+use Espo\Core\Container;
+use Espo\Core\Application;
+
+// From application bootstrap:
+$app = new Application();
+$container = $app->getContainer();
+
+// From inside an injectable class:
+class MyService
+{
+    public function __construct(private Container $container) {}
+}
+```
+
+<Warning>
+  Injecting `Container` and calling `get()` at runtime makes dependencies invisible to static analysis tools. Prefer explicit constructor injection so that dependencies are clear and testable.
+</Warning>
+
+## Creating instances with overridden parameters
+
+`InjectableFactory::createWith()` lets you supply specific constructor arguments while letting the factory resolve the rest:
+
+```php
+$service = $injectableFactory->createWith(MyService::class, [
+    'entityType' => 'Contact',
+]);
+```
+
+Any parameter named `entityType` receives the string `'Contact'`; all other parameters are resolved normally.
